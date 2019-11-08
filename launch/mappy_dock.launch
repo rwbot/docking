@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<launch>
+    <include file="$(find docking)/launch/laserscan_to_pointcloud.launch"/>
+    <include file="$(find dockbot)/launch/dock.launch"/>
+  <!-- <include file="$(find mappy_description)/launch/world_willow_garage.launch"/> -->
+
+      <!-- <arg name="x" default="4"/>
+      <arg name="y" default="-2"/> -->
+      <arg name="x" default="0"/>
+      <arg name="y" default="0"/>
+      <arg name="z" default="0"/>
+
+    <!-- Load the URDF into the ROS Parameter Server -->
+    <!-- Converts XACRO to URDF at launch time and passes it -->
+    <!-- Manual conversion     rosrun xacro xacro model.xacro > model.urdf    -->
+    <param name="robot_description" command="$(find xacro)/xacro '$(find mappy_description)/robots/mappy.urdf.xacro'" />
+
+    <!-- Run a python script to the send a service call to gazebo_ros to spawn a URDF robot -->
+    <!-- <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
+    args="-urdf -x $(arg x) -y $(arg y) -z $(arg z)  -model $(arg robot_name) -param robot_description"/> -->
+    <node name="mappy_urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-urdf  -model mappy -param robot_description -x $(arg x) -y $(arg y) -z $(arg z)"/>
+
+
+    <arg name="rvizconfig" default="$(find docking)/config/rviz/docking.rviz" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" />
+
+
+     <!-- <node name="controller_spawner" pkg="controller_manager" type="spawner" output="screen"  ns="/"  args="joint_state_controller mappy_diff_drive_controller"/> -->
+
+     <!-- <node name="rqt_robot_steering" pkg="rqt_robot_steering" type="rqt_robot_steering">
+         <param name="default_topic" value="mappy_diff_drive_controller/cmd_vel"/>
+    </node> -->
+
+    <node pkg="robot_state_publisher" type="robot_state_publisher"  name="robot_state_publisher">
+        <param name="publish_frequency" type="double" value="30.0" />
+    </node>
+
+</launch>
