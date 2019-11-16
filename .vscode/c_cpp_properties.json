@@ -1,0 +1,41 @@
+{
+    "configurations": [
+        {
+            "browse": {
+                "databaseFilename": "",
+                "limitSymbolsToIncludedHeaders": true
+            },
+            "includePath": [
+                "/home/rwbot/dock_ws/devel/include/**",
+                "/home/rwbot/mappy_ws/devel/include/**",
+                "/home/rwbot/catkin_ws/devel/include/**",
+                "/opt/ros/melodic/include/**",
+                "/home/rwbot/catkin_ws/src/ddynamic_reconfigure/include/**",
+                "/home/rwbot/dock_ws/src/dockbot/include/**",
+                "/home/rwbot/dock_ws/src/docking/include/**",
+                "/home/rwbot/mappy_ws/src/frontier_exploration/exploration_server/include/**",
+                "/opt/ros/melodic/share/fetch_gazebo/include/**",
+                "/home/rwbot/mappy_ws/src/frontier_exploration/frontier_exploration/include/**",
+                "/opt/ros/melodic/share/julius/include/**",
+                "/home/rwbot/mappy_ws/src/mappy/mappy_control/include/**",
+                "/home/rwbot/mappy_ws/src/mappy/mappy_description/include/**",
+                "/home/rwbot/mappy_ws/src/mappy/mappy_navigation/include/**",
+                "/home/rwbot/mappy_ws/src/odometry/include/**",
+                "/home/rwbot/mappy_ws/src/openslam_gmapping/include/**",
+                "/home/rwbot/dock_ws/src/perception_pcl/pcl_conversions/include/**",
+                "/home/rwbot/dock_ws/src/perception_pcl/pcl_ros/include/**",
+                "/home/rwbot/mappy_ws/src/frontier_exploration/polygon_layer/include/**",
+                "/home/rwbot/dock_ws/src/realsense-ros/realsense2_camera/include/**",
+                "/home/rwbot/mappy_ws/src/scanny/include/**",
+                "/home/rwbot/catkin_ws/src/slam_test/include/**",
+                "/home/rwbot/mappy_ws/src/teb/include/**",
+                "/home/rwbot/mappy_ws/src/teleop_twist_joy/include/**",
+                "/home/rwbot/mappy_ws/src/test/include/**",
+                "/usr/include/**"
+            ],
+            "name": "ROS",
+            "compilerPath": "/usr/bin/clang"
+        }
+    ],
+    "version": 4
+}

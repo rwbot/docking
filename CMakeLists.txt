@@ -2,7 +2,18 @@ cmake_minimum_required(VERSION 2.8.3)
 project(docking)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
- add_compile_options(-std=c++11)
+add_compile_options(-std=c++17)
+set(PCL_INCLUDE_DIRS /usr/local/include/pcl-1.8)
+# set(srcs
+#     src/SegmentLine.cpp
+# )
+# set(incs
+#     include/docking/SegmentLine.h
+# )
+# set(impl_incs
+#     include/docking/SegmentLine.hpp
+# )
+
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -12,6 +23,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   pcl_conversions
   pcl_ros
+#  PCL 1.8 REQUIRED
 )
 
 ## System dependencies are found with CMake's conventions
@@ -119,6 +131,7 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  # ${PCL_INCLUDE_DIRS}
 )
 
 # Declare a C++ library
@@ -153,8 +166,11 @@ add_dependencies(
 )
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(line_detection
+target_link_libraries(
+	line_detection
+
   ${catkin_LIBRARIES}
+  # ${PCL_LIBRARIES}
 )
 
 #############

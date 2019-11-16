@@ -1,42 +1,17 @@
 #include <docking/SegmentLine.h>
-using namespace docking;
-typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+//#include <docking/impl/SegmentLine.hpp>
+//#include "docking/SegmentLine.h"
+//#include <pcl/impl/instantiate.hpp>
 
-//constructor:
-template <typename PointT>
-SegmentLine<PointT>::SegmentLine() {}
+//typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
-//de-constructor:
-template <typename PointT>
-SegmentLine<PointT>::~SegmentLine() {}
+////PCL_INSTANTIATE(SegmentLine, (pcl::PointXYZI)(pcl::PointXYZINormal)(pcl::PointXYZRGB));
 
-template <typename PointT>
+////template class PCL_EXPORTS docking::SegmentLine<pcl::PointXYZI>;
+////template class PCL_EXPORTS docking::SegmentLine<pcl::PointXYZ>;
 
-std::pair<pcl::ModelCoefficients::Ptr, pcl::PointIndices::Ptr> RansacLine(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceThreshold)
-{ 
-    auto startTime = std::chrono::steady_clock::now();
-    pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
-    pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
-    //Create the segmentation object
-    pcl::SACSegmentation<PointT> seg;
-    seg.setOptimizeCoefficients(true);
-    seg.setModelType(pcl::SACMODEL_LINE);
-    seg.setMethodType(pcl::SAC_RANSAC);
-    seg.setMaxIterations(maxIterations);
-    seg.setDistanceThreshold(distanceThreshold);
-    //Segment the largest planar component from the input cloud
-    seg.setInputCloud(cloud);
-    seg.segment(*inliers, *coefficients);
-    if (inliers->indices.size() == 0)
-    {
-        std::cout << "Could not estimate a line model for the given dataset." << std::endl;
-    }
-    //
-    auto endTime = std::chrono::steady_clock::now();
-    auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
-    std::cout << "Line segmentation took " << elapsedTime.count() << " microseconds" << std::endl;
+////template class docking::SegmentLine<pcl::PointXYZI>;
+////template class docking::SegmentLine<pcl::PointXYZ>;
 
-    std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> segResult = SeparateClouds(inliers, cloud);
-    std::pair<pcl::ModelCoefficients::Ptr, pcl::PointIndices::Ptr> line; // = <coefficients, inliers>;
-    return line;
-}
+//template class SegmentLine<pcl::PointXYZI>;
+//template class SegmentLine<pcl::PointXYZ>;

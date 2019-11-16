@@ -1,9 +1,8 @@
-/*
-*/
-
 // Include the ROS library
 #include <ros/ros.h>
-#include "docking/SegmentLine.h"
+#include <docking/SegmentLine.h>
+//#include <docking/impl/SegmentLine.hpp>
+//#include "SegmentLine.cpp"
 // Include pcl
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_cloud.h>
@@ -11,7 +10,7 @@
 #include <pcl/point_types.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/sample_consensus/ransac.h>
-#include <pcl/sample_consensus/sac_model_line.h>
+//#include <pcl/sample_consensus/sac_model_line.h>
 // Include PointCloud2 message
 #include <sensor_msgs/PointCloud2.h>
 
@@ -35,19 +34,30 @@ void cloud_cb(const sensor_msgs::PointCloud2ConstPtr &cloud_msg)
     // Perform the actual filtering
     pcl::VoxelGrid<pcl::PCLPointCloud2> sor;
     sor.setInputCloud(cloudPtr);
-    sor.setLeafSize(0.001, 0.001, 0.001);
+    sor.setLeafSize(0.001f, 0.001f, 0.001f);
     sor.filter(cloud_filtered);
 
-    // Convert to ROS data type
-    sensor_msgs::PointCloud2 output;
-    pcl_conversions::moveFromPCL(cloud_filtered, output);
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_pcxyz(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromPCLPointCloud2(*cloud_pc2, *cloud_pcxyz);
 
-    // SegmentLine<pcl::PointXYZ> *segmentLine = new SegmentLine<pcl::PointXYZ>;
-    // std::pair<pcl::ModelCoefficients::Ptr, pcl::PointIndices::Ptr> line = segmentLine.RansacLine(cloud_pcxyz, 1000, 0.01);
+    SegmentLine<pcl::PointXYZ> *segmentLine = new SegmentLine<pcl::PointXYZ>();
+    segmentLine->setInputCloud(cloud_pcxyz);
 
+//    docking::SegmentLine<pcl::PointXYZI> segmentLine (new docking::SegmentLine<pcl::PointXYZI>);
+    //docking::SegmentLine<pcl::PointXYZI> *segmentLine = new docking::SegmentLine<pcl::PointXYZI>();
+//    std::pair<pcl::ModelCoefficients::Ptr, pcl::PointIndices::Ptr> line =
+//    segmentLine->RansacLine();
+
+    std::pair<pcl::ModelCoefficients::Ptr, pcl::PointIndices::Ptr> line = segmentLine->RansacLine(cloud_pcxyz, 1000, 0.01f);
+
+    // Convert to ROS data type
+    sensor_msgs::PointCloud2 output;
+//    output = segmentLine->input_ ;
+//    pcl_conversions::moveFromPCL(cloud_pcxyz, output);
+//    pcl_conversions::
+//    pcl::toPCLPointCloud2(cloud_pcxyz, output);
+//    pcl_conversions::moveFromPCL(cloud_filtered, output);
     // Publish the data
     pub.publish(output);
 }

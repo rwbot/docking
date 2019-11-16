@@ -6,5 +6,8 @@
 #       echo "source ~/dock_ws/src/docking/config/aliases.sh" >> ~/dock_ws/src/.bashrc
 
 alias cb="catkin build"
-alias ccb="catkin clean -y && catkin build"
+alias ccy="catkin clean -y"
+alias ccb="ccy && catkin build"
 alias cdds="cd ~/dock_ws/src"
+alias cdd="cd ~/dock_ws/src/docking"
+alias dcy="cdds; ccy"
