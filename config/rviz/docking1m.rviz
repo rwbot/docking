@@ -6,7 +6,7 @@ Panels:
       Expanded:
         - /RobotModel1/Links1
         - /RobotModel1/Links1/base_link1
-        - /PointCloud21/Status1
+        - /Dock Lines1/Status1
       Splitter Ratio: 0.575419008731842
     Tree Height: 796
   - Class: rviz/Selection
@@ -230,7 +230,7 @@ Visualization Manager:
       Axis: Z
       Channel Name: intensity
       Class: rviz/PointCloud2
-      Color: 52; 101; 164
+      Color: 252; 233; 79
       Color Transformer: FlatColor
       Decay Time: 0
       Enabled: true
@@ -239,7 +239,7 @@ Visualization Manager:
       Max Intensity: 0
       Min Color: 0; 0; 0
       Min Intensity: 0
-      Name: PointCloud2
+      Name: Dock Lines
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true

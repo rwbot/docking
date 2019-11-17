@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- run laserscan_to_pointcloud node -->
+	<node pkg="docking" type="line_detection" name="line_detection" output="screen">
+<rosparam>
+max_iterations: 500
+distance_threshold: 0.00001
+</rosparam>
+    </node>
+</launch>
