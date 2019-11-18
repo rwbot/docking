@@ -1,10 +1,26 @@
 <?xml version="1.0"?>
 <launch>
+<!-- Arguments to allow changing common parameters from the command line or when including this file from other launch files. -->
+<arg name="RS_max_iter" default="250"/>
+<arg name="RS_dist_thresh" default="0.01"/>
+<arg name="Voxel_leaf_size" default="0.001"/>
+<arg name="EC_cluster_tolerance" default="0.01"/>
+<arg name="EC_min_size" default="7"/>
+<arg name="EC_max_size" default="30"/>
+
     <!-- run laserscan_to_pointcloud node -->
-	<node pkg="docking" type="line_detection_node" name="line_detection_node" output="screen">
+	<node pkg="docking" type="line_detection_node" name="line_detection_node" output="screen" respawn="false" clear_params="true">
 <rosparam>
-max_iterations: 500
-distance_threshold: 0.001
+<param name="RS_max_iter" value="$(arg RS_max_iter)"/>
+<param name="RS_dist_thresh" value="$(arg RS_dist_thresh)"/>
+<param name="Voxel_leaf_size" value="$(arg Voxel_leaf_size)"/>
+<param name="EC_cluster_tolerance" value="$(arg EC_cluster_tolerance)"/>
+<param name="EC_min_size" value="$(arg EC_min_size)"/>
+<param name="EC_max_size" value="$(arg EC_max_size)"/>
 </rosparam>
     </node>
+
+<!-- Start up the dynamic reconfigure GUI. -->
+<node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure"/>
+
 </launch>

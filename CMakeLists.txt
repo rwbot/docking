@@ -19,6 +19,7 @@ set(PCL_INCLUDE_DIRS /usr/local/include/pcl-1.8)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  dynamic_reconfigure
   roscpp
   rospy
   pcl_conversions
@@ -101,10 +102,10 @@ find_package(catkin REQUIRED COMPONENTS
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
+ generate_dynamic_reconfigure_options(
+   cfg/SegmentLine.cfg
 #   cfg/DynReconf2.cfg
-# )
+ )
 
 ###################################
 ## catkin specific configuration ##
@@ -118,7 +119,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES docking
- CATKIN_DEPENDS roscpp rospy pcl_conversions pcl_ros
+ CATKIN_DEPENDS dynamic_reconfigure roscpp rospy pcl_conversions pcl_ros
 #  DEPENDS system_lib
 )
 
@@ -164,22 +165,16 @@ add_dependencies(
 	line_detection
 	line_detection_node
 	${line_detection_EXPORTED_TARGETS}
+	${line_detection_node_EXPORTED_TARGETS}
 	${catkin_EXPORTED_TARGETS}
 )
 
+add_dependencies(line_detection ${PROJECT_NAME}_gencfg)
+#add_dependencies(line_detection_node ${PROJECT_NAME}_gencfg)
+
 ## Specify libraries to link a library or executable target against
-target_link_libraries(
-	line_detection
-
-  ${catkin_LIBRARIES}
-  # ${PCL_LIBRARIES}
-)
-target_link_libraries(
-	line_detection_node
-
-  ${catkin_LIBRARIES}
-  # ${PCL_LIBRARIES}
-)
+target_link_libraries(line_detection  ${catkin_LIBRARIES})
+target_link_libraries(line_detection_node  ${catkin_LIBRARIES})
 #############
 ## Install ##
 #############

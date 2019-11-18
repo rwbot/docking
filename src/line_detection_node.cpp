@@ -29,7 +29,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "line_detection_node");
     ros::NodeHandle nh;
 
-    //docking::SegmentLineNode<PointT> *segmentLineNode = new docking::SegmentLineNode<PointT>(nh);
+    docking::SegmentLineNode<PointT> *segmentLineNode = new docking::SegmentLineNode<PointT>(nh);
 
     // Spin
     ros::spin();
