@@ -192,8 +192,6 @@ typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
         voxel.setInputCloud(inCloudPtr);
         voxel.setLeafSize(leafSize, leafSize, leafSize);
         voxel.filter(*filteredCloudPtr);
-
-
       }
 ///////////////// END VOXEL GRID /////////////////
 
@@ -204,6 +202,7 @@ typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 //#include <docking/impl/SegmentLine.hpp>
 //#define PCL_INSTANTIATE_SegmentLine(T) template class PCL_EXPORTS pcl::SegmentLine<T>;
+
   template class SegmentLine<pcl::PointXYZI>;
   template class SegmentLine<pcl::PointXYZ>;
   template class SegmentLine<pcl::PointXYZRGB>;

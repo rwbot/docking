@@ -149,6 +149,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(line_detection src/line_detection.cpp)
+add_executable(line_detection_node src/line_detection_node.cpp)
 # add_executable(${PROJECT_NAME} src/line_detection.cpp)
 
 ## Rename C++ executable without prefix
@@ -161,6 +162,7 @@ add_executable(line_detection src/line_detection.cpp)
 ## same as for the library above
 add_dependencies(
 	line_detection
+	line_detection_node
 	${line_detection_EXPORTED_TARGETS}
 	${catkin_EXPORTED_TARGETS}
 )
@@ -172,7 +174,12 @@ target_link_libraries(
   ${catkin_LIBRARIES}
   # ${PCL_LIBRARIES}
 )
+target_link_libraries(
+	line_detection_node
 
+  ${catkin_LIBRARIES}
+  # ${PCL_LIBRARIES}
+)
 #############
 ## Install ##
 #############
