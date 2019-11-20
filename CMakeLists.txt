@@ -20,6 +20,7 @@ set(PCL_INCLUDE_DIRS /usr/local/include/pcl-1.8)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
+  message_generation
   roscpp
   rospy
   pcl_conversions
@@ -61,11 +62,11 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
+ add_message_files(
+   FILES
+   Line.msg
 #   Message2.msg
-# )
+ )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -82,10 +83,12 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+ generate_messages(
+   DEPENDENCIES
+   std_msgs  # Or other packages containing msgs
+   geometry_msgs
+   pcl_msgs
+ )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -119,7 +122,11 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES docking
- CATKIN_DEPENDS dynamic_reconfigure roscpp rospy pcl_conversions pcl_ros
+ CATKIN_DEPENDS dynamic_reconfigure
+                roscpp
+				rospy
+				pcl_conversions
+				pcl_ros
 #  DEPENDS system_lib
 )
 
@@ -170,7 +177,7 @@ add_dependencies(
 )
 
 add_dependencies(line_detection ${PROJECT_NAME}_gencfg)
-#add_dependencies(line_detection_node ${PROJECT_NAME}_gencfg)
+add_dependencies(line_detection_node ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(line_detection  ${catkin_LIBRARIES})

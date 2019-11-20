@@ -20,7 +20,8 @@
 static const std::string INPUT_CLOUD = "/cloud";
 static const std::string PUBLISH_TOPIC = "/dockLines";
 
-typedef pcl::PointXYZI PointT;
+//typedef pcl::PointXYZI PointT;
+typedef pcl::PointXYZRGB PointT;
 
 
 int main(int argc, char **argv)
