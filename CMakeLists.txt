@@ -65,6 +65,9 @@ find_package(catkin REQUIRED COMPONENTS
  add_message_files(
    FILES
    Line.msg
+   LineArray.msg
+   Cluster.msg
+   ClusterArray.msg
 #   Message2.msg
  )
 
@@ -88,6 +91,7 @@ find_package(catkin REQUIRED COMPONENTS
    std_msgs  # Or other packages containing msgs
    geometry_msgs
    pcl_msgs
+   sensor_msgs
  )
 
 ################################################
