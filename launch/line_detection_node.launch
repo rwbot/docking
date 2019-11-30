@@ -1,6 +1,8 @@
 <?xml version="1.0"?>
 <launch>
 
+<!--<env name="ROSCONSOLE_CONFIG_FILE" value="$(find docking)/config/custom_rosconsole.conf"/>-->
+
     <!-- run laserscan_to_pointcloud node -->
 	<node pkg="docking" type="line_detection_node" name="line_detection_node" output="screen" respawn="false" clear_params="true" >
 		<!-- Arguments to allow changing common parameters from the command line or when including this file from other launch files. -->
@@ -11,3 +13,4 @@
 	<node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure"/>
 
 </launch>
+

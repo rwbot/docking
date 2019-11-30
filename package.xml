@@ -71,6 +71,7 @@
   <exec_depend>pcl_ros</exec_depend>
 
 <depend>std_msgs</depend>
+<depend>visualization_msgs</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
