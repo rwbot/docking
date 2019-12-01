@@ -29,6 +29,7 @@
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl/common/transforms.h>
 #include <pcl/cloud_iterator.h>
+#include <pcl/visualization/pcl_visualizer.h>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -67,6 +68,7 @@ namespace docking{
       ros::Publisher dock_marker_pub_;
       ros::Publisher bbox_pub_; //Bounding box publisher
       ros::Publisher jsk_bbox_pub_; //Bounding box publisher
+      ros::Publisher debug_pub_; //debug publisher
       ros::Subscriber sub_;
       ros::NodeHandle nh_;
       //! Dynamic reconfigure server.
@@ -135,6 +137,7 @@ namespace docking{
         dock_marker_pub_ = nh_.advertise<visualization_msgs::Marker>("docking/dock_marker", 1);
         bbox_pub_ = nh_.advertise<docking::BoundingBox>("docking/bbox", 1);
         jsk_bbox_pub_ = nh_.advertise<jsk_recognition_msgs::BoundingBox>("docking/jsk_bbox", 1);
+        debug_pub_  = nh_.advertise<sensor_msgs::PointCloud2>("docking/debugCloud", 1);
       }
 
       void startSub(std::string cloud_topic){
@@ -199,7 +202,7 @@ namespace docking{
 
           docking::Cluster dockCluster = clusters.clusters.front();
 //          ROS_INFO_STREAM("CALLBACK: Publishing cluster with centroid " << pubCluster.centroid);
-          dock_marker_pub_.publish(markCluster(dockCluster));
+          dock_marker_pub_.publish(dockCluster.bbox.marker);
           bbox_pub_.publish(dockCluster.bbox);
           jsk_bbox_pub_.publish(bboxToJSK(dockCluster.bbox));
       }
@@ -309,7 +312,6 @@ namespace docking{
         int i = 0, j=0;
 
         for (std::vector<docking::Cluster>::const_iterator cit = clusters.clusters.begin(); cit != clusters.clusters.end(); cit++,i++)
-//        for (size_t ist=0; ist<clusters.clusters.size(); ist++,i++)
         {
           ROS_INFO_STREAM("RAN-CLUS--RANSACING THROUGH CLUSTER " << i+1);
           typename pcl::PointCloud<PointT> cloudPCL;
@@ -319,11 +321,9 @@ namespace docking{
           currentLines.header = currentLines.combinedCloud.header = header_;
 
           ROS_INFO_STREAM("RAN-CLUS--ADDING DETECTED LINES FROM CLUSTER " << i+1);
-//          for(size_t j=0; j < currentLines.lines.size();j++)
           for (std::vector<docking::Line>::iterator lit = currentLines.lines.begin(); lit != currentLines.lines.end (); lit++, j++)
           {
              ROS_INFO_STREAM("RAN-CLUS--ADDING DETECTED LINE " << j+1);
-//            lines.lines.push_back(currentLines.lines.front());
             lines.lines.push_back(currentLines.lines.at(j));
           }
 
@@ -423,35 +423,39 @@ namespace docking{
         for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it, ++i)
         {
 
-          typename pcl::PointCloud<PointT>::Ptr cloud_cluster (new pcl::PointCloud<PointT>);
+          typename pcl::PointCloud<PointT>::Ptr cloudClusterPtr (new pcl::PointCloud<PointT>);
           for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
-            cloud_cluster->points.push_back(inCloud->points[*pit]);
+            cloudClusterPtr->points.push_back(inCloud->points[*pit]);
           }
 
-          cloud_cluster->width = cloud_cluster->points.size ();
-          cloud_cluster->height = 1;
-          cloud_cluster->is_dense = true;
+          cloudClusterPtr->width = cloudClusterPtr->points.size ();
+          cloudClusterPtr->height = 1;
+          cloudClusterPtr->is_dense = true;
 
-//          std::cout << "Cluster " << i << " has " << cloud_cluster->points.size() << " points.\n";
-          ROS_INFO_STREAM("Cluster " << i << " has " << cloud_cluster->points.size() << " points");
+//          std::cout << "Cluster " << i << " has " << cloudClusterPtr->points.size() << " points.\n";
+          ROS_INFO_STREAM("Cluster " << i << " has " << cloudClusterPtr->points.size() << " points");
           // Add current cluster to list of clusters
 //          std::cout << "COLORING CLUSTER\n";
           //ROS_INFO_STREAM();
-          ColorCloud(cloud_cluster, i);
+          ColorCloud(cloudClusterPtr, i);
 //          std::cout << "COMBINING CLUSTER\n";
           //ROS_INFO_STREAM();
-          combinedClustersCloud += *cloud_cluster;
+          combinedClustersCloud += *cloudClusterPtr;
 //          std::cout << "ADDING CLUSTER TO VECTOR\n";
           //ROS_INFO_STREAM();
-          clustersPCLVector.push_back(cloud_cluster);
+          clustersPCLVector.push_back(cloudClusterPtr);
           pcl::PointIndicesPtr currentPointIndicesPtr (new pcl::PointIndices(*it));
 //          std::cout << "ROSIFYING CLUSTER\n";
           //ROS_INFO_STREAM();
-          docking::Cluster clusterMsg = rosifyCluster(cloud_cluster, currentPointIndicesPtr);
+          docking::Cluster clusterMsg = rosifyCluster(cloudClusterPtr, currentPointIndicesPtr);
           clusterMsg.header = header_;
 
-          clusterMsg.bbox = getBoundingBoxCluster(clusterMsg);
-          clusterMsg.bbox.centroid = getCentroid(cloud_cluster);
+//          clusterMsg.bbox = getBoundingBoxCluster(clusterMsg);
+//          clusterMsg.bbox.pose = getCentroid(cloudClusterPtr);
+
+          clusterMsg.bbox = getBoundingBoxClusterOriented(cloudClusterPtr);
+          clusterMsg.bbox.marker = markCluster(clusterMsg);
+          clusterMsg.jbbox = bboxToJSK(clusterMsg.bbox);
 
           clusters.clusters.push_back(clusterMsg);
         }
@@ -477,7 +481,7 @@ namespace docking{
         typename pcl::PointCloud<PointT>::Ptr cloudPtr (new pcl::PointCloud<PointT> (cloud));
 
         // Get Centroid of cluster
-//        bbox.centroid.position = getCentroid(cloudPtr);
+//        bbox.pose.position = getCentroid(cloudPtr);
 
         Eigen::Vector4f minVec4f;
         Eigen::Vector4f maxVec4f;
@@ -508,6 +512,116 @@ namespace docking{
       }
 ///////////////// END BOUNDING BOX CLUSTER /////////////////
 
+
+     ///////////////// BEGIN BOUNDING BOX CLUSTER ORIENTED /////////////////
+     /// \brief getBoundingBoxCluster
+     /// \param cluster
+     /// \return bbox
+     ///
+    docking::BoundingBox getBoundingBoxClusterOriented(typename pcl::PointCloud<PointT>::Ptr origCloudPtr)
+    {
+//        pcl::PointXYZ minPoint, maxPoint;
+//        pcl::getMinMax3D(*origCloudPtr, minPoint, maxPoint);
+
+        // Compute principal directions
+        Eigen::Vector4f pcaCentroid;
+        pcl::compute3DCentroid(*origCloudPtr, pcaCentroid);
+        Eigen::Matrix3f covariance;
+
+        computeCovarianceMatrixNormalized(*origCloudPtr, pcaCentroid, covariance);
+        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> eigen_solver(covariance, Eigen::ComputeEigenvectors);
+        Eigen::Matrix3f eigenVectorsPCA = eigen_solver.eigenvectors();
+
+        /*This line is necessary for proper orientation in some cases.
+        The numbers come out the same without it, but the signs are different and
+        the box doesn't get correctly oriented in some cases.*/
+        eigenVectorsPCA.col(2) = eigenVectorsPCA.col(0).cross(eigenVectorsPCA.col(1));
+
+
+        // Note that getting the eigenvectors can also be obtained via the
+        //PCL PCA interface with something like:
+        /*
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloudPCAprojectionPtr (new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::PCA<pcl::PointXYZ> pca;
+        pca.setInputCloud(origCloudPtr);
+        pca.project(*origCloudPtr, *cloudPCAprojectionPtr);
+        std::cerr << std::endl << "EigenVectors: " << pca.getEigenVectors() << std::endl;
+        std::cerr << std::endl << "EigenValues: " << pca.getEigenValues() << std::endl;
+        // In this case, pca.getEigenVectors() gives similar eigenVectors to eigenVectorsPCA.
+        */
+
+        // Transform the original cloud to the origin where the principal components correspond to the axes.
+        Eigen::Matrix4f projectionTransform(Eigen::Matrix4f::Identity());
+        projectionTransform.block<3,3>(0,0) = eigenVectorsPCA.transpose();
+        projectionTransform.block<3,1>(0,3) = -1.f * (projectionTransform.block<3,3>(0,0) * pcaCentroid.head<3>());
+        typename pcl::PointCloud<PointT>::Ptr cloudPointsProjectedPtr (new pcl::PointCloud<PointT>);
+        pcl::transformPointCloud(*origCloudPtr, *cloudPointsProjectedPtr, projectionTransform);
+        // Get the minimum and maximum points of the transformed cloud.
+        typename pcl::PointCloud<pcl::PointXYZ>::Ptr cloudPointsProjectedXYZPtr (new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::copyPointCloud(*cloudPointsProjectedPtr,*cloudPointsProjectedXYZPtr);
+
+
+        printDebugCloud(cloudPointsProjectedXYZPtr);
+
+//        pcl::PointXYZ minPointProjected, maxPointProjected;
+        pcl::PointXYZRGB minPoint, maxPoint;
+        pcl::getMinMax3D(*cloudPointsProjectedPtr, minPoint, maxPoint);
+        const Eigen::Vector3f meanDiagonal = 0.5f*(maxPoint.getVector3fMap() + minPoint.getVector3fMap());
+
+        // Final transform
+        const Eigen::Quaternionf bboxQuaternion(eigenVectorsPCA);
+        const Eigen::Vector3f bboxPosition = eigenVectorsPCA * meanDiagonal + pcaCentroid.head<3>();
+
+        // Convert to ROS BoundingBox Msg
+        docking::BoundingBox bboxMsg;
+
+        bboxMsg.pose.position.x = double(bboxPosition[0]);
+        bboxMsg.pose.position.y = double(bboxPosition[1]);
+        bboxMsg.pose.position.z = double(bboxPosition[2]);
+
+        bboxMsg.pose.orientation.x = double(bboxQuaternion.x());
+        bboxMsg.pose.orientation.y = double(bboxQuaternion.y());
+        bboxMsg.pose.orientation.z = double(bboxQuaternion.z());
+        bboxMsg.pose.orientation.w = double(bboxQuaternion.w());
+
+        geometry_msgs::Point point;
+        ROS_INFO_STREAM("PCL minMaxPoint after getVector3fMap");
+        ROS_INFO_STREAM("PCL minPoint: " << minPoint);
+        ROS_INFO_STREAM("PCL maxPoint: " << maxPoint);
+        // Get Min Point
+        point.x = double(minPoint.x);
+        point.y = double(minPoint.y);
+        point.z = double(minPoint.z);
+        bboxMsg.min = point;
+        // Get Max Point
+        point.x = double(maxPoint.x);
+        point.y = double(maxPoint.y);
+        point.z = double(maxPoint.z);
+        bboxMsg.max = point;
+
+//        @TODO: Transform min and max points back into laser frame
+//        bboxMsg.dimensions.x = bboxMsg.max.x - bboxMsg.min.x ;
+        bboxMsg.dimensions.x = 0.1 ;  //
+        bboxMsg.dimensions.y = bboxMsg.max.y - bboxMsg.min.y ;
+        bboxMsg.dimensions.z = bboxMsg.max.z - bboxMsg.min.z ;
+
+        bboxMsg.area = bboxMsg.dimensions.x * bboxMsg.dimensions.y;
+        bboxMsg.volume = (bboxMsg.area) * bboxMsg.dimensions.z;
+
+        ROS_INFO_STREAM("bboxMsg.min: " << bboxMsg.min);
+        ROS_INFO_STREAM("bboxMsg.max: " << bboxMsg.max);
+        ROS_INFO_STREAM("bboxMsg.dimensions: " << bboxMsg.dimensions);
+
+        bboxMsg.header = header_;
+
+        return bboxMsg;
+
+//        visu->addCube(bboxTransform, bboxQuaternion, maxPoint.x - minPoint.x, maxPoint.y - minPoint.y, maxPoint.z - minPoint.z, "bbox", mesh_vp_3);
+//        addCube (const Eigen::Vector3f &translation, const Eigen::Quaternionf &rotation,double width, double height, double depth,const std::string &id = "cube",int viewport = 0);
+     }
+///////////////// END BOUNDING BOX CLUSTER ORIENTED  /////////////////
+
+
      ///////////////// BEGIN BBOX DOCKING TO JSK /////////////////
      /// \brief getBoundingBoxCluster
      /// \param cluster
@@ -516,9 +630,13 @@ namespace docking{
     jsk_recognition_msgs::BoundingBox bboxToJSK(docking::BoundingBox dbbox)
      {
        jsk_recognition_msgs::BoundingBox jbbox;
-       jbbox.header = dbbox.header;
-       jbbox.pose = dbbox.centroid;
+       jbbox.header = header_;
+       jbbox.pose = dbbox.pose;
        jbbox.dimensions = dbbox.dimensions;
+//        ROS_INFO_STREAM("dbbox.dimensions: " << dbbox.dimensions);
+//        ROS_INFO_STREAM("jbbox.dimensions: " << jbbox.dimensions);
+       jbbox.value = 0.5;
+       jbbox.label = 1;
 
        return jbbox;
      }
@@ -589,6 +707,21 @@ namespace docking{
     }
 ///////////////// END ROSIFY CLUSTER /////////////////
 
+    ///////////////// BEGIN ROSIFY CLUSTER /////////////////
+        docking::Cluster rosifyCluster(typename pcl::PointCloud<PointT>::Ptr &cloudPCLPtr){
+          sensor_msgs::PointCloud2Ptr cloudMsgPtr (new sensor_msgs::PointCloud2);
+
+          pcl::toROSMsg(*cloudPCLPtr,*cloudMsgPtr);
+    //      std::cout << "CONVERTING CURRENT CLUSTER TO ROS MSG\n";
+          //ROS_INFO_STREAM();
+          docking::Cluster cluster;
+          cluster.cloud = *cloudMsgPtr;
+
+          return cluster;
+        }
+///////////////// END ROSIFY CLUSTER /////////////////
+
+
 ///////////////// BEGIN PUBLISH MARKER /////////////////
     void publishMarker(typename pcl::PointCloud<PointT>::Ptr &cloudPCLPtr, pcl::PointIndices::Ptr &indicesPCLPtr, pcl::ModelCoefficients::Ptr &coefficientsPCLPtr){
       sensor_msgs::PointCloud2Ptr cloudMsgPtr (new sensor_msgs::PointCloud2);
@@ -658,7 +791,7 @@ namespace docking{
     /// \param inCloudPtr
     /// \return
     ///
-   void ColorCloud(typename pcl::PointCloud<PointT>::Ptr cPtr, int color)
+   void ColorCloud(typename pcl::PointCloud<pcl::PointXYZRGB>::Ptr cPtr, int color)
     {
        color = color % 4;
        for(size_t i = 0; i < cPtr->points.size(); ++i){
@@ -733,34 +866,37 @@ namespace docking{
 
       }
 
+    void printDebugCloud(typename pcl::PointCloud<pcl::PointXYZ>::Ptr debugCloudPtr){
+      sensor_msgs::PointCloud2 debugCloudMsg;
+      pcl::toROSMsg(*debugCloudPtr,debugCloudMsg);
+      debugCloudMsg.header = header_;
+      debug_pub_.publish(debugCloudMsg);
+      }
+
 
     ///////////////// BEGIN MARK CLUSTER /////////////////
 //    visualization_msgs::Marker mark_cluster(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster, std::string ns ,int id, float r, float g, float b)
     visualization_msgs::Marker markCluster(docking::Cluster cluster)
     {
-
       uint32_t shape = visualization_msgs::Marker::CUBE;
       visualization_msgs::Marker marker;
-//      marker.header.frame_id = cluster->header.frame_id;
       marker.header = header_;
-
       marker.ns = "docking";
       marker.id = 0;
       marker.type = shape;
       marker.action = visualization_msgs::Marker::ADD;
 
-      marker.pose = cluster.bbox.centroid;
+      marker.pose = cluster.bbox.pose;
+      marker.scale.x = cluster.bbox.dimensions.x;
+      marker.scale.y = cluster.bbox.dimensions.y;
+      marker.scale.z = cluster.bbox.dimensions.z;
 
-      marker.scale = cluster.bbox.dimensions;
-
-      if (marker.scale.x == 0)
-          marker.scale.x = 0.1;
-
-      if (marker.scale.y == 0)
-        marker.scale.y = 0.1;
-
-      if (marker.scale.z == 0)
-        marker.scale.z = 0.1;
+//      if (marker.scale.x == 0)
+//          marker.scale.x = 0.1;
+//      if (marker.scale.y == 0)
+//        marker.scale.y = 0.1;
+//      if (marker.scale.z == 0)
+//        marker.scale.z = 0.1;
 
       marker.color.r = 0.0f;
       marker.color.g = 1.0f;

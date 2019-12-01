@@ -13,3 +13,9 @@ alias cdd="cd ~/dock_ws/src/docking"
 alias dcy="cdd; ccy"
 alias dcb="cdd; cb"
 alias dcyb="cdd; ccy; dcb; sws"
+
+alias swsd="source ~/dock_ws/devel/setup.bash"
+alias swsm="source ~/mappy_ws/devel/setup.bash"
+
+alias rlmd="swsm; roslaunch docking mappy_dock.launch"
+alias rld="swsd; roslaunch docking line_detection_node.launch"
