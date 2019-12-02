@@ -72,6 +72,7 @@ find_package(catkin REQUIRED COMPONENTS
    ClusterArray.msg
    BoundingBox.msg
    Dock.msg
+   MinMaxPoint.msg
 #   Message2.msg
  )
 

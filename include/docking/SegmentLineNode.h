@@ -11,7 +11,10 @@
 #include <docking/ClusterArray.h>
 #include <docking/Dock.h>
 #include <docking/BoundingBox.h>
+#include <docking/MinMaxPoint.h>
+
 #include <jsk_recognition_msgs/BoundingBox.h>
+#include <jsk_recognition_msgs/PolygonArray.h>
 
 #include <ros/ros.h>
 #include <pcl_ros/point_cloud.h>
@@ -32,6 +35,7 @@
 #include <pcl/visualization/pcl_visualizer.h>
 
 #include <pcl/point_cloud.h>
+//#include <pcl/>
 #include <pcl/point_types.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/sample_consensus/ransac.h>
@@ -560,7 +564,6 @@ namespace docking{
         typename pcl::PointCloud<pcl::PointXYZ>::Ptr cloudPointsProjectedXYZPtr (new pcl::PointCloud<pcl::PointXYZ>);
         pcl::copyPointCloud(*cloudPointsProjectedPtr,*cloudPointsProjectedXYZPtr);
 
-
         printDebugCloud(cloudPointsProjectedXYZPtr);
 
 //        pcl::PointXYZ minPointProjected, maxPointProjected;
@@ -749,21 +752,17 @@ namespace docking{
     sensor_msgs::PointCloud2 CombineClouds(sensor_msgs::PointCloud2 augendCloudMsg, sensor_msgs::PointCloud2 addendCloudMsg){
 
       typename pcl::PointCloud<PointT> augendCloudPCL;
-//      std::cout << "CONVERTING AUGENDCLOUDMSG TO PCL\n";
-      //ROS_INFO_STREAM();
+//      ROS_INFO_STREAM("CONVERTING AUGENDCLOUDMSG TO PCL");
       pcl::fromROSMsg(augendCloudMsg, augendCloudPCL);
 
 
       typename pcl::PointCloud<PointT>::Ptr addendCloudPCLPtr (new pcl::PointCloud<PointT>);
-//      std::cout << "CONVERTING ADDENDCLOUDMSG TO PCL\n";
-      //ROS_INFO_STREAM();
+      //ROS_INFO_STREAM("CONVERTING ADDENDCLOUDMSG TO PCL");
       pcl::fromROSMsg(addendCloudMsg, *addendCloudPCLPtr);
 
-//      std::cout << "ADDING PCL DETECTED LINE CLUSTERS\n";
-      //ROS_INFO_STREAM();
+      //ROS_INFO_STREAM("ADDING PCL DETECTED LINE CLUSTERS");
       augendCloudPCL += *addendCloudPCLPtr;
-//      std::cout << "CONVERTING COMBINED LINE CLUSTER CLOUD TO ROS MSG\n";
-      //ROS_INFO_STREAM();
+      //ROS_INFO_STREAM("CONVERTING COMBINED LINE CLUSTER CLOUD TO ROS MSG");
       pcl::toROSMsg(augendCloudPCL,augendCloudMsg);
       return augendCloudMsg;
     }
@@ -907,6 +906,47 @@ namespace docking{
 //       marker.lifetime = ros::Duration(0.5);
       return marker;
     }
+
+    geometry_msgs::Point pointPCLToMSG(pcl::PointXYZ point){
+      geometry_msgs::Point pointMsg;
+      // Get Min Point
+      pointMsg.x = double(point.x);
+      pointMsg.y = double(point.y);
+      pointMsg.z = double(point.z);
+      return pointMsg;
+    }
+
+    geometry_msgs::Point pointPCLToMSG(pcl::PointXYZRGB point){
+      geometry_msgs::Point pointMsg;
+      // Get Min Point
+      pointMsg.x = double(point.x);
+      pointMsg.y = double(point.y);
+      pointMsg.z = double(point.z);
+      return pointMsg;
+    }
+
+    docking::MinMaxPoint getMinMaxPointMsg(typename pcl::PointCloud<pcl::PointXYZ>::Ptr inCloudPtr){
+      pcl::PointXYZ minPointPCL, maxPointPCL;
+      pcl::getMinMax3D(*inCloudPtr, minPointPCL, maxPointPCL);
+      docking::MinMaxPoint minMaxMsg;
+      minMaxMsg.min = pointPCLToMSG(minPointPCL);
+      minMaxMsg.max = pointPCLToMSG(maxPointPCL);
+      return minMaxMsg;
+    }
+
+    docking::MinMaxPoint getMinMaxPointMsg(typename pcl::PointCloud<pcl::PointXYZRGB>::Ptr inCloudPtr){
+      pcl::PointXYZRGB minPointPCL, maxPointPCL;
+      pcl::getMinMax3D(*inCloudPtr, minPointPCL, maxPointPCL);
+      docking::MinMaxPoint minMaxMsg;
+      minMaxMsg.min = pointPCLToMSG(minPointPCL);
+      minMaxMsg.max = pointPCLToMSG(maxPointPCL);
+      return minMaxMsg;
+    }
+
+
+
+
+
 
       //! RANSAC Maximum Iterations
       int RS_max_iter_;

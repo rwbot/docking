@@ -7,6 +7,7 @@
 
 alias cb="catkin build"
 alias ccy="catkin clean -y"
+alias ccdy="catkin clean docking -y"
 alias ccb="ccy && catkin build"
 alias dws="cd ~/dock_ws/"
 alias cdd="cd ~/dock_ws/src/docking"
