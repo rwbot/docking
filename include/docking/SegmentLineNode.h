@@ -80,6 +80,11 @@ public:
   //! Dynamic reconfigure server.
   dynamic_reconfigure::Server<docking::SegmentLineConfig> dr_srv_;
 
+  //! Input PCL Cloud
+  typename pcl::PointCloud<PointT> scanCloudPCL_;
+  //! Input PCL Cloud Pointer
+  typename pcl::PointCloud<PointT>::Ptr scanCloudPCLPtr_(typename pcl::PointCloud<PointT> scanCloudPCL_);
+
   void startDynamicReconfigureServer() {
     // Set up a dynamic reconfigure server.
     // Do this before parameter server, else some of the parameter server values
@@ -90,6 +95,7 @@ public:
   }
 
   void initParams() {
+
     // Initialize node parameters from launch file or command line.
     nh_.param("world_frame", world_frame_, world_frame_);
     nh_.param("robot_frame", robot_frame_, robot_frame_);
@@ -169,8 +175,10 @@ public:
   }
 
   void cloudCallback(const sensor_msgs::PointCloud2ConstPtr &msg) {
-    //        segmentsPtr_.
     header_ = msg->header;
+    segments_.header = lines_.header = header_;
+    segments_.segments.clear();
+    lines_.lines.clear();
     ROS_INFO_STREAM("Callback Called: ");
     // Container for original & filtered data
     /*
@@ -178,24 +186,21 @@ public:
      */
     pcl::PointCloud<PointT> cloudPCL;
     pcl::fromROSMsg(*msg, cloudPCL);
-    typename pcl::PointCloud<PointT>::Ptr cloudPCLPtr(
-        new pcl::PointCloud<PointT>(cloudPCL));
+    pcl::fromROSMsg(*msg, scanCloudPCL_);
+    typename pcl::PointCloud<PointT>::Ptr cloudPCLPtr(new pcl::PointCloud<PointT>(cloudPCL));
 
     /* ========================================
      * CLUSTERING
      * ========================================*/
-    docking::ClusterArray clusters = this->ClusterPoints(
-        cloudPCLPtr, EC_cluster_tolerance_, EC_min_size_, EC_max_size_);
+    docking::ClusterArray clusters = this->ClusterPoints(cloudPCLPtr, EC_cluster_tolerance_, EC_min_size_, EC_max_size_);
 
-    ROS_INFO_STREAM("clusters.combinedCloud.frame_id "
-                    << clusters.combinedCloud.header.frame_id);
+    ROS_INFO_STREAM("clusters.combinedCloud.frame_id " << clusters.combinedCloud.header.frame_id);
 
     /* ========================================
      * RANSAC LINES
      * ========================================*/
 
-    ROS_INFO_STREAM("Distance Threshold: "
-                    << RS_dist_thresh_ << " Max Iterations: " << RS_max_iter_);
+    ROS_INFO_STREAM("Distance Threshold: "<< RS_dist_thresh_ << " Max Iterations: " << RS_max_iter_);
     docking::LineArray lines;
     if (RANSAC_on_clusters_) {
       /* ========================================
@@ -256,6 +261,8 @@ public:
   //     pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float
   //     distanceThreshold)
   {
+    typename pcl::PointCloud<PointT> copyInputCloud = *inputCloudPtr;
+    typename pcl::PointCloud<PointT>::Ptr copyInputCloudPtr(new pcl::PointCloud<PointT>(copyInputCloud));
     std::cout << std::endl;
     ROS_INFO_STREAM("RANSAC Called: ");
     pcl::ModelCoefficients::Ptr coefficientsPtr(new pcl::ModelCoefficients());
@@ -275,7 +282,7 @@ public:
 
     std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> segResult;
     typename pcl::PointCloud<PointT>::Ptr inCloudPtr, outCloudPtr;
-    inCloudPtr = inputCloudPtr;
+    inCloudPtr = copyInputCloudPtr;
     pcl::PointCloud<PointT> combinedLinesCloud;
     int i = 0;
     while (true) {
@@ -294,6 +301,7 @@ public:
         break;
       }
       ROS_INFO_STREAM("Detected Line # " << i + 1);
+//      ROS_INFO_STREAM("Inlier Points" << inliersPtr->indices << "");
       segResult = SeparateClouds(inliersPtr, inCloudPtr);
 
       // Create new cloud for detected line
@@ -361,17 +369,18 @@ public:
     int i = 0;
 
     for (std::vector<docking::Cluster>::const_iterator cit = clusters.clusters.begin(); cit != clusters.clusters.end(); cit++, i++) {
-      ROS_INFO_STREAM("RAN-CLUS--RANSACING THROUGH CLUSTER " << i + 1);
+      ROS_INFO_STREAM("RAN-CLUS--RANSACING THROUGH CLUSTER " << cit->id);
       typename pcl::PointCloud<PointT> cloudPCL;
       typename pcl::PointCloud<PointT>::Ptr cloudPCLPtr(new pcl::PointCloud<PointT>(cloudPCL));
       pcl::fromROSMsg(clusters.clusters.at(i).cloud, *cloudPCLPtr);
       docking::LineArray currentLines = getRansacLines(cloudPCLPtr);
       currentLines.header = currentLines.combinedCloud.header = header_;
 
-      ROS_INFO_STREAM("RAN-CLUS-- DETECTED " << currentLines.lines.size() << " LINES FROM CLUSTER " << i + 1);
+      ROS_INFO_STREAM("RAN-CLUS-- DETECTED " << currentLines.lines.size() << " LINES FROM CLUSTER " << cit->id);
       int j = 0;
       for (std::vector<docking::Line>::iterator lit = currentLines.lines.begin(); lit != currentLines.lines.end(); lit++) {
         ROS_INFO_STREAM("RAN-CLUS--ADDING DETECTED LINE " << j + 1);
+        currentLines.lines.at(j).clusterID = cit->id;
         lines.lines.push_back(currentLines.lines.at(j));
         j++;
       }
@@ -384,7 +393,7 @@ public:
     ROS_INFO_STREAM("RAN-CLUS--RETURNING ALL DETECTED LINES FROM ALL CLUSTERS");
     pcl::toROSMsg(linesCombinedPCL, lines.combinedCloud);
     lines.header = lines.combinedCloud.header = header_;
-    ROS_INFO_STREAM("lines.combinedCloud.frame_id " << lines.combinedCloud.header.frame_id);
+//    ROS_INFO_STREAM("lines.combinedCloud.frame_id " << lines.combinedCloud.header.frame_id);
     std::cout << std::endl;
     return lines;
   }
@@ -408,8 +417,7 @@ public:
   /// \param maxSize
   /// \return
   ///
-  docking::ClusterArray ClusterPoints(typename pcl::PointCloud<PointT>::Ptr inCloud,
-                double clusterTolerance, int minSize, int maxSize) {
+  docking::ClusterArray ClusterPoints(typename pcl::PointCloud<PointT>::Ptr inCloud, double clusterTolerance, int minSize, int maxSize) {
     std::cout << std::endl;
     // ROS_INFO_STREAM();
     ROS_INFO_STREAM("CLUSTERING Called: ");
@@ -419,8 +427,7 @@ public:
     docking::ClusterArray clusters;
 
     pcl::PointCloud<PointT> combinedClustersCloud;
-    typename pcl::search::KdTree<PointT>::Ptr tree(
-        new pcl::search::KdTree<PointT>);
+    typename pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<PointT>);
     tree->setInputCloud(inCloud);
     std::vector<pcl::PointIndices> cluster_indices;
     pcl::EuclideanClusterExtraction<PointT> ec;
@@ -433,19 +440,13 @@ public:
 
     //        std::cout << "CLUSTERING: " << cluster_indices.size() << "
     //        clusters found" << std::endl;
-    ROS_INFO_STREAM("CLUSTERING: " << cluster_indices.size()
-                                   << " clusters found");
+    ROS_INFO_STREAM("CLUSTERING: " << cluster_indices.size()<< " clusters found");
 
     std::vector<typename pcl::PointCloud<PointT>::Ptr> clustersPCLVector;
     int i = 0;
-    for (std::vector<pcl::PointIndices>::const_iterator it =
-             cluster_indices.begin();
-         it != cluster_indices.end(); ++it, ++i) {
-
-      typename pcl::PointCloud<PointT>::Ptr cloudClusterPtr(
-          new pcl::PointCloud<PointT>);
-      for (std::vector<int>::const_iterator pit = it->indices.begin();
-           pit != it->indices.end(); pit++) {
+    for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); ++it, ++i) {
+      typename pcl::PointCloud<PointT>::Ptr cloudClusterPtr(new pcl::PointCloud<PointT>);
+      for (std::vector<int>::const_iterator pit = it->indices.begin(); pit != it->indices.end(); pit++) {
         cloudClusterPtr->points.push_back(inCloud->points[*pit]);
       }
 
@@ -469,8 +470,8 @@ public:
       pcl::PointIndicesPtr currentPointIndicesPtr(new pcl::PointIndices(*it));
       //          std::cout << "ROSIFYING CLUSTER\n";
       // ROS_INFO_STREAM();
-      docking::Cluster clusterMsg =
-          rosifyCluster(cloudClusterPtr, currentPointIndicesPtr);
+      docking::Cluster clusterMsg = rosifyCluster(cloudClusterPtr, currentPointIndicesPtr);
+      clusterMsg.id.data = i;
       clusterMsg.header = header_;
 
       //          clusterMsg.bbox = getBoundingBoxCluster(clusterMsg);
@@ -784,15 +785,18 @@ public:
   /// \return
   ///
   std::pair<typename pcl::PointCloud<PointT>::Ptr,typename pcl::PointCloud<PointT>::Ptr> SeparateClouds(pcl::PointIndices::Ptr inliers, typename pcl::PointCloud<PointT>::Ptr cloud) {
+
     typename pcl::PointCloud<PointT>::Ptr inCloud(new pcl::PointCloud<PointT>());
     typename pcl::PointCloud<PointT>::Ptr outCloud(new pcl::PointCloud<PointT>());
+    pcl::PointIndices outliers;
 
     // Obtain the inlier point cloud by copying only inlier indices to the
     // planeCloud for(int index : inliers->indices)
     //     inCloud->points.push_back(cloud->points[index]);
     // ****** ^ does the same as below for the inliers, cuz we already have the
-    // inlier indices****** Create extract object
-    pcl::ExtractIndices<PointT> extract;
+    // inlier indices******
+    //Create extract object
+    pcl::ExtractIndices<PointT> extract (true);
     extract.setInputCloud(cloud);
     extract.setIndices(inliers);
 
@@ -800,19 +804,30 @@ public:
     extract.setNegative(false); // Extract the inliers, not outliers
     extract.filter(*inCloud);   // Output cloud
 
+    extract.getRemovedIndices(outliers);
+
     // Get obstacle cloud (outliers)
     extract.setNegative(true); // Extract the outliers, not inliers
     extract.filter(*outCloud); // Output cloud
     //          std::cout << "Inliers: " << inCloud->width * inCloud->height <<
     //          " points " << " Outliers: " << outCloud->width *
     //          outCloud->height << " points" << std::endl;
-    ROS_INFO_STREAM("Inliers: " << inCloud->width * inCloud->height << " points " << " Outliers: " << outCloud->width * outCloud->height << " points");
+    ROS_INFO_STREAM("Inliers: " << inCloud->width * inCloud->height << " points Outliers: " << outCloud->width * outCloud->height << " points");
+    ROS_INFO_STREAM("Inliers: ");
+    printIndices(*inliers);
+    ROS_INFO_STREAM("Outliers: ");
+    printIndices(outliers);
 
     std::pair<typename pcl::PointCloud<PointT>::Ptr,typename pcl::PointCloud<PointT>::Ptr>segResult(inCloud, outCloud);
     return segResult;
   }
   ///////////////// END SEPARATE CLOUDS /////////////////
 
+  void printIndices(pcl::PointIndices indices) {
+     for(size_t i=0; i < indices.indices.size(); i++)
+        std::cout << indices.indices.at(i) << ' ';
+     std::cout << std::endl;
+  }
 
   ///////////////// BEGIN COMBINE CLOUDS /////////////////
   /// \brief CombineClouds      std::vector of PointT Clouds
@@ -938,33 +953,61 @@ public:
       }
     }
 
+    void updateLineList(docking::Line line){
+//      segments_.header = header_;
+//      ROS_INFO_STREAM("COMPARING SEGMENTS");
+//      bool doesExist = false;
+//      float segmentDelta;
+//      for (size_t i =0; i < segments_.segments.size(); i++){
+//        segmentDelta = compareSegments(line.segment, segments_.segments.at(i));
+//        ROS_INFO_STREAM("COMPARE SEGMENTS - SEGMENT OF DETECTED LINE " << line.segment);
+//        ROS_INFO_STREAM("COMPARE SEGMENTS - SEGMENT OF SEGMENT LIST INDEX " << i << " " << segments_.segments.at(i));
+//        ROS_INFO_STREAM("COMPARE SEGMENTS - DELTA: " << segmentDelta);
+//        if(segmentDelta < CL_segment_delta_){
+//          doesExist = true;
+//        }
+//      }
+
+//      if(!doesExist){
+//        ROS_INFO_STREAM("COMPARE SEGMENTS - LINE SEGMENT IS UNIQUE, ADDING TO LIST");
+//        segments_.segments.push_back(line.segment);
+//      } else if (segments_.segments.size() == 0){
+//        ROS_INFO_STREAM("COMPARE SEGMENTS - LINE SEGMENT IS UNIQUE, ADDING TO LIST");
+//        segments_.segments.push_back(line.segment);
+//      } else {
+//        ROS_INFO_STREAM("COMPARE SEGMENTS - LINE SEGMENT ALREADY EXISTS");
+//      }
+
+//      ROS_INFO_STREAM("COMPARE SEGMENTS - TOTAL SEGMENTS = " << segments_.segments.size());
+    }
+
       void updateSegmentList(docking::Line line){
-        segments_.header = header_;
-        ROS_INFO_STREAM("COMPARING SEGMENTS");
+//        ROS_INFO_STREAM("COMPARING SEGMENTS");
         bool doesExist = false;
         float segmentDelta;
         for (size_t i =0; i < segments_.segments.size(); i++){
           segmentDelta = compareSegments(line.segment, segments_.segments.at(i));
-          ROS_INFO_STREAM("COMPARE SEGMENTS - SEGMENT OF DETECTED LINE " << line.segment);
-          ROS_INFO_STREAM("COMPARE SEGMENTS - SEGMENT OF SEGMENT LIST INDEX " << i << " " << segments_.segments.at(i));
-          ROS_INFO_STREAM("COMPARE SEGMENTS - DELTA: " << segmentDelta);
+//          ROS_INFO_STREAM("COMPARE SEGMENTS - SEGMENT OF DETECTED LINE " << line.segment);
+//          ROS_INFO_STREAM("COMPARE SEGMENTS - SEGMENT OF SEGMENT LIST INDEX " << i << " " << segments_.segments.at(i));
+//          ROS_INFO_STREAM("COMPARE SEGMENTS - DELTA: " << segmentDelta);
           if(segmentDelta < CL_segment_delta_){
             doesExist = true;
           }
         }
 
         if(!doesExist){
-          ROS_INFO_STREAM("COMPARE SEGMENTS - LINE SEGMENT IS UNIQUE, ADDING TO LIST");
+//          ROS_INFO_STREAM("COMPARE SEGMENTS - LINE SEGMENT IS UNIQUE, ADDING TO LIST");
           segments_.segments.push_back(line.segment);
         } else if (segments_.segments.size() == 0){
-          ROS_INFO_STREAM("COMPARE SEGMENTS - LINE SEGMENT IS UNIQUE, ADDING TO LIST");
+//          ROS_INFO_STREAM("COMPARE SEGMENTS - LINE SEGMENT IS UNIQUE, ADDING TO LIST");
           segments_.segments.push_back(line.segment);
         } else {
-          ROS_INFO_STREAM("COMPARE SEGMENTS - LINE SEGMENT ALREADY EXISTS");
+//          ROS_INFO_STREAM("COMPARE SEGMENTS - LINE SEGMENT ALREADY EXISTS");
         }
 
-        ROS_INFO_STREAM("COMPARE SEGMENTS - TOTAL SEGMENTS = " << segments_.segments.size());
+//        ROS_INFO_STREAM("COMPARE SEGMENTS - TOTAL SEGMENTS = " << segments_.segments.size());
       }
+
 
 
   //! Delta for comparing two line centroids
@@ -980,8 +1023,9 @@ public:
 
   //! Global list of line segments for publisher
   jsk_recognition_msgs::SegmentArray segments_;
-  //      jsk_recognition_msgs::SegmentArray::Ptr segmentsPtr_ (new
-  //      jsk_recognition_msgs::SegmentArray(segments_));
+  //! Global list of line segments for publisher
+  docking::LineArray lines_;
+
 
   //! RANSAC Maximum Iterations
   int RS_max_iter_;
