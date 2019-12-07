@@ -71,6 +71,7 @@ public:
   ros::Publisher lines_cloud_pub_;
   ros::Publisher lines_pub_;
   ros::Publisher line_marker_pub_;
+  ros::Publisher line_segment_pub_;
   ros::Publisher dock_marker_pub_;
   ros::Publisher bbox_pub_;     // Bounding box publisher
   ros::Publisher jsk_bbox_pub_; // Bounding box publisher
@@ -94,8 +95,14 @@ public:
     dr_srv_.setCallback(cb);
   }
 
-  void initParams() {
+  void initLineMarker(){
+    lines_marker_.type = visualization_msgs::Marker::LINE_LIST;
+    lines_marker_.header = header_;
+    lines_marker_.ns = "docking";
+    lines_marker_.id = 0;
+  }
 
+  void initParams() {
     // Initialize node parameters from launch file or command line.
     nh_.param("world_frame", world_frame_, world_frame_);
     nh_.param("robot_frame", robot_frame_, robot_frame_);
@@ -159,7 +166,8 @@ public:
 
     lines_cloud_pub_ =  nh_.advertise<sensor_msgs::PointCloud2>("docking/linesCloud", 1);
     lines_pub_ = nh_.advertise<docking::LineArray>("docking/lines", 1);
-    line_marker_pub_ = nh_.advertise<jsk_recognition_msgs::SegmentArray>("docking/segments_marker", 1);
+    line_segment_pub_ = nh_.advertise<jsk_recognition_msgs::SegmentArray>("docking/segments_marker", 1);
+    line_marker_pub_ = nh_.advertise<visualization_msgs::Marker>("docking/lines_marker", 1);
 
     dock_marker_pub_ = nh_.advertise<visualization_msgs::Marker>("docking/dock_marker", 1);
     bbox_pub_ = nh_.advertise<docking::BoundingBox>("docking/bbox", 1);
@@ -176,9 +184,12 @@ public:
 
   void cloudCallback(const sensor_msgs::PointCloud2ConstPtr &msg) {
     header_ = msg->header;
-    segments_.header = lines_.header = header_;
+    segments_.header = lines_.header = lines_marker_.header = header_;
     segments_.segments.clear();
     lines_.lines.clear();
+    lines_marker_.points.clear();
+    lines_marker_.colors.clear();
+
     ROS_INFO_STREAM("Callback Called: ");
     // Container for original & filtered data
     /*
@@ -236,7 +247,8 @@ public:
 
     if(segments_.segments.size() != 0){
       ROS_INFO_STREAM("CALLBACK: Publishing " << segments_.segments.size() << " SEGMENTS ");
-      line_marker_pub_.publish(segments_);
+      line_marker_pub_.publish(lines_marker_);
+      line_segment_pub_.publish(segments_);
     }
     dock_marker_pub_.publish(dockCluster.bbox.marker);
     bbox_pub_.publish(dockCluster.bbox);
@@ -325,6 +337,8 @@ public:
       line.segment = getSegment(lineCloudPCLPtr);
 //      compareLines()
       updateSegmentList(line);
+      updateLineList(line);
+      markLine(line);
 
       //        ROS_INFO_STREAM("ROSIFYING LINE-- with " <<
       //        line.points.indices.size() << " points and coefficients " <<
@@ -930,6 +944,38 @@ public:
     return marker;
   }
 
+  ///////////////// BEGIN MARK LINE /////////////////
+  //    visualization_msgs::Marker
+  //    mark_cluster(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster,
+  //    std::string ns ,int id, float r, float g, float b)
+  void markLine(docking::Line line) {
+
+    lines_marker_.type = visualization_msgs::Marker::LINE_LIST;
+    lines_marker_.header = header_;
+    lines_marker_.ns = "docking";
+    lines_marker_.id = 0;
+
+    lines_marker_.action = visualization_msgs::Marker::ADD;
+
+//    lines_marker_.pose = line.centroid;
+    lines_marker_.pose.orientation.w = 1.0;
+    lines_marker_.points.push_back(line.segment.start_point);
+    lines_marker_.points.push_back(line.segment.end_point);
+    lines_marker_.scale.x = lines_marker_.scale.y = lines_marker_.scale.z = 0.05;
+
+    lines_marker_.color.r = 0.0f;
+    lines_marker_.color.g = 1.0f;
+    lines_marker_.color.b = 0.0f;
+    lines_marker_.color.a = 0.15f;
+
+//    std_msgs::ColorRGBA color = lines_marker_.color;
+    lines_marker_.colors.push_back(lines_marker_.color);
+    lines_marker_.colors.push_back(lines_marker_.color);
+
+    lines_marker_.lifetime = ros::Duration();
+    //       marker.lifetime = ros::Duration(0.5);
+  }
+
     bool compareLines(docking::Line l1, docking::Line l2){
       float totalDelta;
 
@@ -954,31 +1000,28 @@ public:
     }
 
     void updateLineList(docking::Line line){
-//      segments_.header = header_;
-//      ROS_INFO_STREAM("COMPARING SEGMENTS");
-//      bool doesExist = false;
-//      float segmentDelta;
-//      for (size_t i =0; i < segments_.segments.size(); i++){
-//        segmentDelta = compareSegments(line.segment, segments_.segments.at(i));
-//        ROS_INFO_STREAM("COMPARE SEGMENTS - SEGMENT OF DETECTED LINE " << line.segment);
-//        ROS_INFO_STREAM("COMPARE SEGMENTS - SEGMENT OF SEGMENT LIST INDEX " << i << " " << segments_.segments.at(i));
-//        ROS_INFO_STREAM("COMPARE SEGMENTS - DELTA: " << segmentDelta);
-//        if(segmentDelta < CL_segment_delta_){
-//          doesExist = true;
-//        }
-//      }
+      lines_.header = header_;
+      ROS_INFO_STREAM("COMPARING LINES");
+      bool doesExist = false;
+      float lineDelta;
+      for (size_t i =0; i < lines_.lines.size(); i++){
+        doesExist = compareLines(line, lines_.lines.at(i));
+//        ROS_INFO_STREAM("COMPARE LINES - DETECTED LINE " << line);
+//        ROS_INFO_STREAM("COMPARE LINES - LINE LIST INDEX " << i << " " << lines_.lines.at(i));
+        ROS_INFO_STREAM("COMPARE LINES - DELTA: " << lineDelta);
+      }
 
-//      if(!doesExist){
-//        ROS_INFO_STREAM("COMPARE SEGMENTS - LINE SEGMENT IS UNIQUE, ADDING TO LIST");
-//        segments_.segments.push_back(line.segment);
-//      } else if (segments_.segments.size() == 0){
-//        ROS_INFO_STREAM("COMPARE SEGMENTS - LINE SEGMENT IS UNIQUE, ADDING TO LIST");
-//        segments_.segments.push_back(line.segment);
-//      } else {
-//        ROS_INFO_STREAM("COMPARE SEGMENTS - LINE SEGMENT ALREADY EXISTS");
-//      }
+      if(!doesExist){
+        ROS_INFO_STREAM("COMPARE LINES - LINE IS UNIQUE, ADDING TO LIST");
+        lines_.lines.push_back(line);
+      } else if (lines_.lines.size() == 0){
+        ROS_INFO_STREAM("COMPARE LINES - LINE IS UNIQUE, ADDING TO LIST");
+        lines_.lines.push_back(line);
+      } else {
+        ROS_INFO_STREAM("COMPARE LINES - LINE ALREADY EXISTS");
+      }
 
-//      ROS_INFO_STREAM("COMPARE SEGMENTS - TOTAL SEGMENTS = " << segments_.segments.size());
+      ROS_INFO_STREAM("COMPARE LINES - TOTAL LINES = " << lines_.lines.size());
     }
 
       void updateSegmentList(docking::Line line){
@@ -1025,6 +1068,9 @@ public:
   jsk_recognition_msgs::SegmentArray segments_;
   //! Global list of line segments for publisher
   docking::LineArray lines_;
+
+  visualization_msgs::Marker lines_marker_;
+
 
 
   //! RANSAC Maximum Iterations
