@@ -288,7 +288,7 @@ public:
     while (true) {
 
       if (inCloudPtr->size() <= RS_min_inliers_) {
-        ROS_INFO_STREAM(std::endl << "Less than " << RS_min_inliers_ << " points left");
+        ROS_INFO_STREAM(std::endl << "RANSAC: Less than " << RS_min_inliers_ << " points left");
         break;
       }
 
@@ -297,10 +297,10 @@ public:
       seg.segment(*inliersPtr, *coefficientsPtr);
 
       if (inliersPtr->indices.size() <= RS_min_inliers_) {
-        ROS_INFO_STREAM("Less than " << RS_min_inliers_ << " inliers left");
+        ROS_INFO_STREAM("RANSAC: Less than " << RS_min_inliers_ << " inliers left");
         break;
       }
-      ROS_INFO_STREAM("Detected Line # " << i + 1);
+      ROS_INFO_STREAM("RANSAC: Detected Line # " << i + 1);
 //      ROS_INFO_STREAM("Inlier Points" << inliersPtr->indices << "");
       segResult = SeparateClouds(inliersPtr, inCloudPtr);
 
@@ -311,15 +311,17 @@ public:
       lineCloudPCLPtr->height = 1;
       lineCloudPCLPtr->is_dense = true;
 
-      ROS_INFO_STREAM("Coloring Line at index " << lineVector.size() << " Total lines: " << lineVector.size());
+      ROS_INFO_STREAM("RANSAC: Coloring Line at index " << lineVector.size() << " Total lines: " << lineVector.size());
       ColorCloud(lineCloudPCLPtr, i);
 
       // Add detected line to output cloud and lines array
       lineVector.push_back(lineCloudPCLPtr);
-      ROS_INFO_STREAM("Added Line to PCLVector at index "<< lineVector.size() - 1 << " Total lines in Vector: " << lineVector.size());
+      ROS_INFO_STREAM("RANSAC: Added Line to PCLVector at index "<< lineVector.size() - 1 << " Total lines in Vector: " << lineVector.size());
 
+      ROS_INFO_STREAM("RANSAC: ADDING LINE TO COMBINED CLOUD");
       combinedLinesCloud += *lineCloudPCLPtr;
 
+      ROS_INFO_STREAM("RANSAC: ROSIFYING LINE");
       docking::Line line = rosifyLine(lineCloudPCLPtr, inliersPtr, coefficientsPtr);
       line.centroid = getCentroid(lineCloudPCLPtr);
       line.segment = getSegment(lineCloudPCLPtr);
@@ -332,9 +334,9 @@ public:
 //      line =
       printLineInfo(line);
       line.header = line.cloud.header = header_;
-      ROS_INFO_STREAM("Adding Line MSG at index " << lines.lines.size());
+      ROS_INFO_STREAM("RANSAC: Adding Line MSG at index " << lines.lines.size());
       lines.lines.push_back(line);
-      ROS_INFO_STREAM("Total lines in MSG: " << lines.lines.size());
+      ROS_INFO_STREAM("RANSAC: Total lines in MSG: " << lines.lines.size());
 
       // Assign cloud of outliers to new input cloud
       inCloudPtr = segResult.second;
@@ -590,7 +592,7 @@ public:
         new pcl::PointCloud<pcl::PointXYZ>);
     pcl::copyPointCloud(*cloudPointsProjectedPtr, *cloudPointsProjectedXYZPtr);
 
-    printDebugCloud(cloudPointsProjectedXYZPtr);
+//    printDebugCloud(cloudPointsProjectedXYZPtr);
 
     //        pcl::PointXYZ minPointProjected, maxPointProjected;
     pcl::PointXYZRGB minPoint, maxPoint;
@@ -786,9 +788,11 @@ public:
   ///
   std::pair<typename pcl::PointCloud<PointT>::Ptr,typename pcl::PointCloud<PointT>::Ptr> SeparateClouds(pcl::PointIndices::Ptr inliers, typename pcl::PointCloud<PointT>::Ptr cloud) {
 
-    typename pcl::PointCloud<PointT>::Ptr inCloud(new pcl::PointCloud<PointT>());
-    typename pcl::PointCloud<PointT>::Ptr outCloud(new pcl::PointCloud<PointT>());
+    typename pcl::PointCloud<PointT>::Ptr inCloud(new pcl::PointCloud<PointT>(*cloud));
+    typename pcl::PointCloud<PointT>::Ptr outCloud(new pcl::PointCloud<PointT>(*cloud));
+    typename pcl::PointCloud<PointT>::Ptr temp(new pcl::PointCloud<PointT>());
     pcl::PointIndices outliers;
+    pcl::PointIndices extractedPoints;
 
     // Obtain the inlier point cloud by copying only inlier indices to the
     // planeCloud for(int index : inliers->indices)
@@ -797,26 +801,42 @@ public:
     // inlier indices******
     //Create extract object
     pcl::ExtractIndices<PointT> extract (true);
-    extract.setInputCloud(cloud);
     extract.setIndices(inliers);
 
-    // Get plane cloud (inliers)
+    // Get line cloud (inliers)
+    extract.setInputCloud(inCloud);
     extract.setNegative(false); // Extract the inliers, not outliers
-    extract.filter(*inCloud);   // Output cloud
+    extract.filter(*temp);
+    int inSize = temp->width * temp->height;
+    extract.filterDirectly(inCloud);   // Output cloud
+    ROS_INFO_STREAM("Directly Filtered Inliers: " << inCloud->width * inCloud->height);
+    std::vector<int> mapping;
+    pcl::removeNaNFromPointCloud(*inCloud,*inCloud,mapping);
+    ROS_INFO_STREAM("Directly Filtered Inliers After Removing NaN: " << inCloud->width * inCloud->height << " Mapping : ");
+    printVector(mapping);
 
     extract.getRemovedIndices(outliers);
 
     // Get obstacle cloud (outliers)
+//    extract.setNegative(true); // Extract the outliers, not inliers
+//    extract.filter(*outCloud); // Output cloud
+
+    // Filter line cloud (inliers)
+    extract.setInputCloud(outCloud);
     extract.setNegative(true); // Extract the outliers, not inliers
-    extract.filter(*outCloud); // Output cloud
-    //          std::cout << "Inliers: " << inCloud->width * inCloud->height <<
-    //          " points " << " Outliers: " << outCloud->width *
-    //          outCloud->height << " points" << std::endl;
-    ROS_INFO_STREAM("Inliers: " << inCloud->width * inCloud->height << " points Outliers: " << outCloud->width * outCloud->height << " points");
+    extract.filter(*temp); // Output cloud
+    int outSize = temp->width * temp->height;
+    extract.filterDirectly(outCloud);   // Output cloud
+//    printDebugCloud(directCloud);
+
+    ROS_INFO_STREAM("Inliers: " << inSize << " points Outliers: " << outSize << " points");
+//    ROS_INFO_STREAM("Directly Filtered Cloud: " << directCloud->width * directCloud->height << " points");
     ROS_INFO_STREAM("Inliers: ");
     printIndices(*inliers);
     ROS_INFO_STREAM("Outliers: ");
     printIndices(outliers);
+    ROS_INFO_STREAM("Directly Filtered Points: ");
+    printIndices(extractedPoints);
 
     std::pair<typename pcl::PointCloud<PointT>::Ptr,typename pcl::PointCloud<PointT>::Ptr>segResult(inCloud, outCloud);
     return segResult;
@@ -826,6 +846,12 @@ public:
   void printIndices(pcl::PointIndices indices) {
      for(size_t i=0; i < indices.indices.size(); i++)
         std::cout << indices.indices.at(i) << ' ';
+     std::cout << std::endl;
+  }
+
+  void printVector(std::vector<int> vec) {
+     for(size_t i=0; i < vec.size(); i++)
+        std::cout << vec.at(i) << ' ';
      std::cout << std::endl;
   }
 
@@ -889,6 +915,12 @@ public:
 
 
   void printDebugCloud(typename pcl::PointCloud<pcl::PointXYZ>::Ptr debugCloudPtr) {
+    sensor_msgs::PointCloud2 debugCloudMsg;
+    pcl::toROSMsg(*debugCloudPtr, debugCloudMsg);
+    debugCloudMsg.header = header_;
+    debug_pub_.publish(debugCloudMsg);
+  }
+  void printDebugCloud(typename pcl::PointCloud<pcl::PointXYZRGB>::Ptr debugCloudPtr) {
     sensor_msgs::PointCloud2 debugCloudMsg;
     pcl::toROSMsg(*debugCloudPtr, debugCloudMsg);
     debugCloudMsg.header = header_;
