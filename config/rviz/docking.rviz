@@ -6,6 +6,9 @@ Panels:
       Expanded:
         - /RobotModel1/Links1
         - /RobotModel1/Links1/base_link1
+        - /BoundingBox1
+        - /Segments Marker1
+        - /Segments Marker1/Status1
       Splitter Ratio: 0.6176470518112183
     Tree Height: 728
   - Class: rviz/Selection
@@ -324,7 +327,7 @@ Visualization Manager:
       Topic: /docking/jsk_bbox
       Unreliable: false
       Value: true
-      alpha: 0.20000000298023224
+      alpha: 0.10000000149011612
       color: 25; 255; 0
       coloring: Flat color
       line width: 0.004999999888241291
@@ -360,6 +363,16 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: false
+    - Class: jsk_rviz_plugin/SegmentArray
+      Enabled: true
+      Name: Segments Marker
+      Topic: /docking/segments_marker
+      Unreliable: false
+      Value: true
+      alpha: 1
+      color: 25; 255; 0
+      coloring: Auto
+      line width: 0.019999999552965164
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -388,7 +401,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 4.477934837341309
+      Distance: 4.401514053344727
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -406,7 +419,7 @@ Visualization Manager:
       Pitch: 1.5697963237762451
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.175400972366333
+      Yaw: 3.2054004669189453
     Saved: ~
 Window Geometry:
   Displays:
