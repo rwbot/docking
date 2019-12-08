@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="gui" default="false"/>
+    <arg name="dock_x" default="1.0"/>
+    <arg name="dock_y" default="0.0"/>
+    <arg name="dock_YAW" default="-1.57"/>
+
+    <!-- <include file="$(find dockbot)/launch/dock.launch">
+        <arg name="gui" value="$(arg gui)" />
+        <arg name="dock_x" value="$(arg dock_x)" />
+        <arg name="dock_y" value="$(arg dock_y)" />
+        <arg name="dock_YAW" value="$(arg dock_YAW)" />
+    </include> -->
+
+    <include file="$(find docking)/launch/laserscan_to_pointcloud.launch"/>
+
+    <!-- Load the URDF into the ROS Parameter Server -->
+    <!-- Converts XACRO to URDF at launch time and passes it -->
+    <!-- Manual conversion     rosrun xacro xacro model.xacro > model.urdf    -->
+    <param name="robot_description" command="$(find xacro)/xacro '$(find mappy_description)/robots/mappy.urdf.xacro' robot_namespace:=mappy" />
+
+    <param name="dock_description" command="$(find xacro)/xacro '$(find dockbot)/robots/dock.urdf.xacro' robot_namespace:=dock" />
+
+
+    <!-- Run a python script to the send a service call to gazebo_ros to spawn a URDF robot -->
+    <!-- <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-urdf -x $(arg x) -y $(arg y) -z $(arg z)  -model $(arg robot_name) -param robot_description"/> -->
+    <node name="mappy_urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-urdf -model mappy -param robot_description"/>
+
+    <node name="dock_urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-urdf  -model dock -param dock_description -x $(arg dock_x) -y $(arg dock_y) -Y $(arg dock_YAW)"/>
+
+
+    <group ns="mappy">
+        <node name="mappy_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
+            <!-- <param name="tf_prefix" value="mappy"/> -->
+        </node>
+        <node pkg="tf" type="static_transform_publisher" name="mappy_odom" args="0 0 0 0 0 0 1 map base_footprint 100" />
+    </group>
+
+    <group ns="dock">
+        <node name="dock_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
+            <remap from="robot_description" to="dock_description" />
+            <!-- <param name="tf_prefix" value="dock"/> -->
+        </node>
+        <node pkg="tf" type="static_transform_publisher" name="dock_odom" args="$(arg dock_x) $(arg dock_y) 0 0 0 $(arg dock_YAW) 1 map dock_base_footprint 100" />
+    </group>
+
+
+    <arg name="rvizconfig" default="$(find docking)/config/rviz/docking.rviz" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" />
+
+    <node name="rqt_tf_tree" pkg="rqt_tf_tree" type="rqt_tf_tree" />
+
+
+    <!-- <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+<param name="publish_frequency" type="double" value="30.0" />
+</node> -->
+
+</launch>

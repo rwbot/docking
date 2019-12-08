@@ -1,24 +1,27 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="gui" default="false"/>
+    <arg name="gui" default="true"/>
     <arg name="dock_x" default="1.0"/>
     <arg name="dock_y" default="0.0"/>
     <arg name="dock_YAW" default="-1.57"/>
 
-	<include file="$(find dockbot)/launch/dock.launch">
-	    <arg name="gui" value="false" />
+    <arg name="world_name" default="worlds/empty.world"/>
+    <!-- <arg name="world_name" value="$(find docking)/worlds/obstacles.world"/> -->
+    <!-- <arg name="world_name" value="$(find docking)/worlds/demo.world"/> -->
+
+    <include file="$(find dockbot)/launch/dock.launch">
+        <arg name="gui" value="$(arg gui)" />
         <arg name="dock_x" value="$(arg dock_x)" />
         <arg name="dock_y" value="$(arg dock_y)" />
         <arg name="dock_YAW" value="$(arg dock_YAW)" />
-	</include>
+        <arg name="world_name" value="$(arg world_name)" />
+    </include>
 
     <include file="$(find docking)/launch/laserscan_to_pointcloud.launch"/>
 
-  <!-- <include file="$(find mappy_description)/launch/world_willow_garage.launch"/> -->
-
-      <arg name="x" default="0"/>
-      <arg name="y" default="0"/>
-      <arg name="z" default="0"/>
+    <arg name="x" default="0"/>
+    <arg name="y" default="0"/>
+    <arg name="z" default="0"/>
 
     <!-- Load the URDF into the ROS Parameter Server -->
     <!-- Converts XACRO to URDF at launch time and passes it -->
@@ -26,15 +29,14 @@
     <param name="robot_description" command="$(find xacro)/xacro '$(find mappy_description)/robots/mappy.urdf.xacro'" />
 
     <!-- Run a python script to the send a service call to gazebo_ros to spawn a URDF robot -->
-    <!-- <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
-    args="-urdf -x $(arg x) -y $(arg y) -z $(arg z)  -model $(arg robot_name) -param robot_description"/> -->
+    <!-- <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-urdf -x $(arg x) -y $(arg y) -z $(arg z)  -model $(arg robot_name) -param robot_description"/> -->
     <node name="mappy_urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-urdf  -model mappy -param robot_description -x $(arg x) -y $(arg y) -z $(arg z)"/>
 
 
     <arg name="rvizconfig" default="$(find docking)/config/rviz/docking.rviz" />
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" />
 
-    <node pkg="robot_state_publisher" type="robot_state_publisher"  name="robot_state_publisher">
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
         <param name="publish_frequency" type="double" value="30.0" />
     </node>
 
