@@ -74,9 +74,11 @@ docking::MinMaxPoint getMinMaxPointMsg(typename pcl::PointCloud<pcl::PointXYZ>::
   pcl::PointXYZ minPointPCL, maxPointPCL;
   pcl::getMinMax3D(*inCloudPtr, minPointPCL, maxPointPCL);
   docking::MinMaxPoint minMaxMsg;
+  ROS_INFO_STREAM("PCL minPoint: " << minPointPCL);
+  ROS_INFO_STREAM("PCL maxPoint: " << maxPointPCL);
   minMaxMsg.min = pointPCLToMSG(minPointPCL);
   minMaxMsg.max = pointPCLToMSG(maxPointPCL);
-//  minMaxMsg.header = header_;
+  ROS_INFO_STREAM("MinMax msg: " << minMaxMsg);
   return minMaxMsg;
 }
 
@@ -84,10 +86,42 @@ docking::MinMaxPoint getMinMaxPointMsg(typename pcl::PointCloud<pcl::PointXYZRGB
   pcl::PointXYZRGB minPointPCL, maxPointPCL;
   pcl::getMinMax3D(*inCloudPtr, minPointPCL, maxPointPCL);
   docking::MinMaxPoint minMaxMsg;
+  ROS_INFO_STREAM("getMinMaxPointMsg");
+  ROS_INFO_STREAM("PCL minPoint: " << minPointPCL);
+  ROS_INFO_STREAM("PCL maxPoint: " << maxPointPCL);
   minMaxMsg.min = pointPCLToMSG(minPointPCL);
   minMaxMsg.max = pointPCLToMSG(maxPointPCL);
-//  minMaxMsg.header = header_;
+  ROS_INFO_STREAM(minMaxMsg);
   return minMaxMsg;
+}
+
+double getEuclideanDistance(docking::Line line) {
+  double length, x1, x2, y1, y2;
+  x1 = line.segment.start_point.x;
+  x2 = line.segment.end_point.x;
+  y1 = line.segment.start_point.y;
+  y2 = line.segment.end_point.y;
+  ROS_INFO_STREAM("getEuclideanDistance");
+  ROS_INFO_STREAM("SEG: ");
+  ROS_INFO_STREAM(line.segment);
+
+  double dx = x2-x1;
+  double dy = y2-y1;
+
+  length = sqrt( dx*dx + dy*dy  );
+  ROS_INFO_STREAM("EUCLIDEAN DISTANCE: " << length);
+  return length;
+}
+
+double getEuclideanDistance(geometry_msgs::Point p1, geometry_msgs::Point p2) {
+  double length, x1, x2, y1, y2;
+  x1 = p1.x;
+  x2 = p2.x;
+  y1 = p1.y;
+  y2 = p2.y;
+
+  length = sqrt( (x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)  );
+  return length;
 }
 
 jsk_recognition_msgs::Segment minMaxToSegment(docking::MinMaxPoint minMax) {

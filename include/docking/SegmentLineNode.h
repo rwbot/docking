@@ -123,9 +123,11 @@ public:
     nh_.param("EC_max_size", EC_max_size_, EC_max_size_);
 
     nh_.param("CL_centroid_delta", CL_centroid_delta_, CL_centroid_delta_);
-    nh_.param("CL_coefficient_delta_", CL_coefficient_delta_, CL_coefficient_delta_);
-    nh_.param("CL_segment_delta_", CL_segment_delta_, CL_segment_delta_);
-    nh_.param("CL_points_delta_", CL_points_delta_, CL_points_delta_);
+    nh_.param("CL_coefficient_delta", CL_coefficient_delta_, CL_coefficient_delta_);
+    nh_.param("CL_segment_delta", CL_segment_delta_, CL_segment_delta_);
+    nh_.param("CL_points_delta", CL_points_delta_, CL_points_delta_);
+    
+    
 
     // Use a private node handle so that multiple instances
     // of the node can be run simultaneously while using different parameters.
@@ -133,6 +135,10 @@ public:
     //        pnh.param("RS_max_iter", RS_max_iter_, RS_max_iter_);
     //        pnh.param("RS_dist_thresh", RS_dist_thresh_, RS_dist_thresh_);
     //        pnh.param("Voxel_leaf_size", Voxel_leaf_size_, Voxel_leaf_size_);
+  }
+  
+  void initDockParams(){
+    nh_.param("dock_wing_length", CL_points_delta_, CL_points_delta_);
   }
 
   //! Callback function for dynamic reconfigure server.
@@ -203,9 +209,9 @@ public:
     /* ========================================
      * CLUSTERING
      * ========================================*/
-    docking::ClusterArray clusters = this->ClusterPoints(cloudPCLPtr, EC_cluster_tolerance_, EC_min_size_, EC_max_size_);
+    clusters_ = this->ClusterPoints(cloudPCLPtr, EC_cluster_tolerance_, EC_min_size_, EC_max_size_);
 
-    ROS_INFO_STREAM("clusters.combinedCloud.frame_id " << clusters.combinedCloud.header.frame_id);
+    ROS_INFO_STREAM("clusters.combinedCloud.frame_id " << clusters_.combinedCloud.header.frame_id);
 
     /* ========================================
      * RANSAC LINES
@@ -217,7 +223,7 @@ public:
       /* ========================================
        * RANSAC LINES FROM CLUSTERS
        * ========================================*/
-      lines = this->getRansacLinesOnCluster(clusters);
+      lines = this->getRansacLinesOnCluster(clusters_);
       ROS_INFO_STREAM("CALLING RANSAC ON CLUSTERED CLOUD: ");
 
     } else {
@@ -234,14 +240,14 @@ public:
      * PUBLISH CLOUD
      * ========================================*/
 
-    clusters_cloud_pub_.publish(clusters.combinedCloud);
-    clusters_pub_.publish(clusters);
+    clusters_cloud_pub_.publish(clusters_.combinedCloud);
+    clusters_pub_.publish(clusters_);
 
     lines_cloud_pub_.publish(lines.combinedCloud);
     //          docking::LineArray::Ptr linesPtr (new docking::LineArray(lines));
     lines_pub_.publish(lines);
 
-    docking::Cluster dockCluster = clusters.clusters.front();
+    docking::Cluster dockCluster = clusters_.clusters.front();
     //          ROS_INFO_STREAM("CALLBACK: Publishing cluster with centroid " <<
     //          pubCluster.centroid);
 
@@ -335,6 +341,7 @@ public:
       docking::Line line = rosifyLine(lineCloudPCLPtr, inliersPtr, coefficientsPtr);
       line.centroid = getCentroid(lineCloudPCLPtr);
       line.segment = getSegment(lineCloudPCLPtr);
+      line.length.data = getEuclideanDistance(line);
 //      compareLines()
       updateSegmentList(line);
       updateLineList(line);
@@ -417,8 +424,12 @@ public:
 
   ///////////////// BEGIN MATCH DOCK /////////////////
 
-  docking::Dock matchDock(docking::LineArray lines) {
+  docking::Dock matchDock() {
     docking::Dock dock;
+    int i=0;
+    for (std::vector<docking::Cluster>::const_iterator cit = clusters_.clusters.begin(); cit != clusters_.clusters.end(); cit++, i++){
+
+    }
     return dock;
   }
   ///////////////// END MATCH DOCK /////////////////
@@ -436,7 +447,7 @@ public:
     // ROS_INFO_STREAM();
     ROS_INFO_STREAM("CLUSTERING Called: ");
     //        ROS_INFO_STREAM("");
-    ROS_INFO_STREAM("Cluster tolerance: " << clusterTolerance << " Min Points: " << minSize << " Max Points: " << maxSize);
+//    ROS_INFO_STREAM("Cluster tolerance: " << clusterTolerance << " Min Points: " << minSize << " Max Points: " << maxSize);
 
     docking::ClusterArray clusters;
 
@@ -515,8 +526,7 @@ public:
 
     typename pcl::PointCloud<PointT> cloud;
     pcl::fromROSMsg(cluster.cloud, cloud);
-    typename pcl::PointCloud<PointT>::Ptr cloudPtr(
-        new pcl::PointCloud<PointT>(cloud));
+    typename pcl::PointCloud<PointT>::Ptr cloudPtr(new pcl::PointCloud<PointT>(cloud));
 
     // Get Centroid of cluster
     //        bbox.pose.position = getCentroid(cloudPtr);
@@ -644,7 +654,8 @@ public:
     point.z = double(maxPoint.z);
     bboxMsg.max = point;
 
-    //        @TODO: Transform min and max points back into laser frame
+    //        @TODO: Points still in dock frame
+    //              Transform min and max points back into laser frame
     //        bboxMsg.dimensions.x = bboxMsg.max.x - bboxMsg.min.x ;
     bboxMsg.dimensions.x = 0.1; //
     bboxMsg.dimensions.y = bboxMsg.max.y - bboxMsg.min.y;
@@ -823,14 +834,12 @@ public:
     // Get obstacle cloud (outliers)
     extract.setNegative(true); // Extract the outliers, not inliers
     extract.filter(*outCloud); // Output cloud
-    //          std::cout << "Inliers: " << inCloud->width * inCloud->height <<
-    //          " points " << " Outliers: " << outCloud->width *
-    //          outCloud->height << " points" << std::endl;
+
     ROS_INFO_STREAM("Inliers: " << inCloud->width * inCloud->height << " points Outliers: " << outCloud->width * outCloud->height << " points");
-    ROS_INFO_STREAM("Inliers: ");
-    printIndices(*inliers);
-    ROS_INFO_STREAM("Outliers: ");
-    printIndices(outliers);
+//    ROS_INFO_STREAM("Inliers: ");
+//    printIndices(*inliers);
+//    ROS_INFO_STREAM("Outliers: ");
+//    printIndices(outliers);
 
     std::pair<typename pcl::PointCloud<PointT>::Ptr,typename pcl::PointCloud<PointT>::Ptr>segResult(inCloud, outCloud);
     return segResult;
@@ -1066,11 +1075,12 @@ public:
 
   //! Global list of line segments for publisher
   jsk_recognition_msgs::SegmentArray segments_;
-  //! Global list of line segments for publisher
-  docking::LineArray lines_;
-
+  //! Global list of line markers for publisher
   visualization_msgs::Marker lines_marker_;
-
+  //! Global list of line msgs for publisher
+  docking::LineArray lines_;
+  //! Global list of cluster msgs for publisher
+  docking::ClusterArray clusters_;
 
 
   //! RANSAC Maximum Iterations
@@ -1091,6 +1101,9 @@ public:
 
   //! Bool of dock search status
   bool found_Dock_;
+  //! Dock Wing Length
+  double dock_wing_length;
+  
 
   //! Leaf Size for Voxel Grid
   double Voxel_leaf_size_;
