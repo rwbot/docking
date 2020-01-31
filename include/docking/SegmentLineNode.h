@@ -188,13 +188,24 @@ public:
     sub_ = nh_.subscribe(cloud_topic, 1, &SegmentLineNode::cloudCallback, this);
   }
 
-  void cloudCallback(const sensor_msgs::PointCloud2ConstPtr &msg) {
-    header_ = msg->header;
-    segments_.header = lines_.header = lines_marker_.header = header_;
+  void clearGlobals(){
     segments_.segments.clear();
     lines_.lines.clear();
     lines_marker_.points.clear();
     lines_marker_.colors.clear();
+  }
+
+  typename pcl::PointCloud<PointT>::Ptr loadPointCloudFile(const std::string& filePath){
+    typename pcl::PointCloud<PointT>::Ptr scanCloudPCLPtr(new pcl::PointCloud<PointT> ());
+
+    return scanCloudPCLPtr;
+  }
+
+  void cloudCallback(const sensor_msgs::PointCloud2ConstPtr &msg) {
+    header_ = msg->header;
+    segments_.header = lines_.header = lines_marker_.header = header_;
+
+    clearGlobals();
 
     ROS_INFO_STREAM("Callback Called: ");
     // Container for original & filtered data
