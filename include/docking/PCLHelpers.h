@@ -51,6 +51,32 @@
 
 namespace docking{
 
+Eigen::Vector4f toEigen(pcl::ModelCoefficients pmc){
+  pcl::ModelCoefficients::Ptr pmcPtr (new pcl::ModelCoefficients(pmc));
+  pmcPtr->values.resize (4);
+  pmcPtr->values[0] = 1.0;
+  pmcPtr->values[1] = 2.0;
+  pmcPtr->values[2] = 3.0;
+  pmcPtr->values[3] = 4.0;
+  Eigen::Vector4f ev4f (pmcPtr->values.data());
+  return ev4f;
+}
+
+double getAngle(docking::Line l1, docking::Line l2){
+  double angle;
+  pcl_msgs::ModelCoefficients lmc1 = l1.coefficients;
+  pcl::ModelCoefficients pmc1;
+  pcl_conversions::toPCL(lmc1, pmc1);
+  Eigen::Vector4f lv1 = toEigen(pmc1);
+
+  pcl_msgs::ModelCoefficients lmc2 = l2.coefficients;
+  pcl::ModelCoefficients pmc2;
+  pcl_conversions::toPCL(lmc2, pmc2);
+  Eigen::Vector4f lv2 = toEigen(pmc2);
+
+  pcl::getAngle3D(lv1, lv2);
+  return angle;
+}
 
 geometry_msgs::Point pointPCLToMSG(pcl::PointXYZ point) {
   geometry_msgs::Point pointMsg;
@@ -74,11 +100,12 @@ docking::MinMaxPoint getMinMaxPointMsg(typename pcl::PointCloud<pcl::PointXYZ>::
   pcl::PointXYZ minPointPCL, maxPointPCL;
   pcl::getMinMax3D(*inCloudPtr, minPointPCL, maxPointPCL);
   docking::MinMaxPoint minMaxMsg;
-  ROS_INFO_STREAM("PCL minPoint: " << minPointPCL);
-  ROS_INFO_STREAM("PCL maxPoint: " << maxPointPCL);
+//  ROS_INFO_STREAM("PCL minPoint: " << minPointPCL);
+//  ROS_INFO_STREAM("PCL maxPoint: " << maxPointPCL);
   minMaxMsg.min = pointPCLToMSG(minPointPCL);
   minMaxMsg.max = pointPCLToMSG(maxPointPCL);
-  ROS_INFO_STREAM("MinMax msg: " << minMaxMsg);
+//  ROS_INFO_STREAM("MinMax msg: " << minMaxMsg);
+  std::cout << std::endl;
   return minMaxMsg;
 }
 
@@ -86,12 +113,13 @@ docking::MinMaxPoint getMinMaxPointMsg(typename pcl::PointCloud<pcl::PointXYZRGB
   pcl::PointXYZRGB minPointPCL, maxPointPCL;
   pcl::getMinMax3D(*inCloudPtr, minPointPCL, maxPointPCL);
   docking::MinMaxPoint minMaxMsg;
-  ROS_INFO_STREAM("getMinMaxPointMsg");
-  ROS_INFO_STREAM("PCL minPoint: " << minPointPCL);
-  ROS_INFO_STREAM("PCL maxPoint: " << maxPointPCL);
+//  ROS_INFO_STREAM("getMinMaxPointMsg");
+//  ROS_INFO_STREAM("PCL minPoint: " << minPointPCL);
+//  ROS_INFO_STREAM("PCL maxPoint: " << maxPointPCL);
   minMaxMsg.min = pointPCLToMSG(minPointPCL);
   minMaxMsg.max = pointPCLToMSG(maxPointPCL);
-  ROS_INFO_STREAM(minMaxMsg);
+//  ROS_INFO_STREAM(minMaxMsg);
+  std::cout << std::endl;
   return minMaxMsg;
 }
 
@@ -101,15 +129,16 @@ double getEuclideanDistance(docking::Line line) {
   x2 = line.segment.end_point.x;
   y1 = line.segment.start_point.y;
   y2 = line.segment.end_point.y;
-  ROS_INFO_STREAM("getEuclideanDistance");
-  ROS_INFO_STREAM("SEG: ");
-  ROS_INFO_STREAM(line.segment);
+//  ROS_INFO_STREAM("getEuclideanDistance");
+//  ROS_INFO_STREAM("SEG: ");
+//  ROS_INFO_STREAM(line.segment);
 
   double dx = x2-x1;
   double dy = y2-y1;
 
   length = sqrt( dx*dx + dy*dy  );
-  ROS_INFO_STREAM("EUCLIDEAN DISTANCE: " << length);
+//  ROS_INFO_STREAM("EUCLIDEAN DISTANCE: " << length);
+  std::cout << std::endl;
   return length;
 }
 
