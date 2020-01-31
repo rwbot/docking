@@ -6,4 +6,5 @@ jsk_recognition_msgs/Segment segment
 geometry_msgs/Pose centroid
 std_msgs/Float32 length
 std_msgs/Int32 clusterID
+std_msgs/Int32 lineID
 visualization_msgs/Marker marker

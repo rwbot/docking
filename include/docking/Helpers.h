@@ -50,7 +50,7 @@
 namespace docking{
 
 void printLineInfo(docking::Line line) {
-  ROS_INFO_STREAM("LINE has "
+  ROS_INFO_STREAM("LINE ID "<< line.lineID.data << " has "
                   << line.points.indices.size() << " points and "
                   << " and Centroid X:" << line.centroid.position.x
                   << " Y:" << line.centroid.position.y

@@ -18,6 +18,6 @@ alias dcyb="cdd; ccy; dcb; sws"
 alias swsd="source ~/dock_ws/devel/setup.bash"
 alias swsm="source ~/mappy_ws/devel/setup.bash"
 
-alias rlmd="swsm; roslaunch docking mappy_dock.launch"
-alias rld="swsd; rcpy; roslaunch docking line_detection_node.launch"
+alias rlmd="rcpy; swsm; roslaunch docking mappy_dock.launch"
+alias rld="rcpy; swsd; roslaunch docking line_detection_node.launch"
 alias rcpy="rosclean purge -y"

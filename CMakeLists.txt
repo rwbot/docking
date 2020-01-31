@@ -135,9 +135,10 @@ catkin_package(
  LIBRARIES docking
  CATKIN_DEPENDS dynamic_reconfigure
                 roscpp
-				rospy
-				pcl_conversions
-				pcl_ros
+                rospy
+                pcl_conversions
+                pcl_ros
+                message_runtime
 #  DEPENDS system_lib
 )
 
