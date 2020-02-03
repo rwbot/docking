@@ -49,7 +49,7 @@
 #include <string>
 #include <vector>
 
-namespace docking{
+
 
 Eigen::Vector4f toEigen(pcl::ModelCoefficients pmc){
   pcl::ModelCoefficients::Ptr pmcPtr (new pcl::ModelCoefficients(pmc));
@@ -258,6 +258,6 @@ int comparePointIndices(pcl_msgs::PointIndices pi1, pcl_msgs::PointIndices pi2){
 
 
 
-}
+
 
 #endif // PCLHELPERS_H

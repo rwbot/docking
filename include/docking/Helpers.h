@@ -47,7 +47,6 @@
 #include <string>
 #include <vector>
 
-namespace docking{
 
 void printLineInfo(docking::Line line) {
   ROS_INFO_STREAM("LINE ID "<< line.lineID.data << " has "
@@ -141,6 +140,6 @@ void extractRGBUI32(int rgb) {
   //      unsigned(g) << " B " << +b << std::endl;
 }
 
-}
+
 
 #endif // HELPERS_H

@@ -6,7 +6,11 @@
     <!-- run laserscan_to_pointcloud node -->
 	<node pkg="docking" type="line_detection_node" name="line_detection_node" output="screen" respawn="false" clear_params="true" >
 		<!-- Arguments to allow changing common parameters from the command line or when including this file from other launch files. -->
+<!--                <param name="dockFilePath" value="$(find docking)/pcd/monkey.ply"/>-->
+                <param name="dockFilePath" value="/home/rwbot/dock_ws/src/docking/pcd/monkey.ply"/>
+
 		<rosparam file="$(find docking)/config/line_detection_params.yaml" />
+
     </node>
 
 	<!-- Start up the dynamic reconfigure GUI. -->

@@ -34,6 +34,7 @@
 #include <pcl/filters/extract_indices.h>
 #include <pcl/io/io.h>
 #include <pcl/io/pcd_io.h>
+#include <pcl/io/ply_io.h>
 #include <pcl/pcl_base.h>
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl/segmentation/sac_segmentation.h>
@@ -54,7 +55,7 @@
 
 // typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
-namespace docking {
+//namespace docking {
 
 template <typename PointT> class SegmentLineNode {
 
@@ -64,6 +65,7 @@ public:
     initParams();
     startPub();
     startSub(cloud_topic_);
+    initDockParams();
   }
   ~SegmentLineNode() {}
   ros::Publisher clusters_cloud_pub_;
@@ -85,6 +87,11 @@ public:
   typename pcl::PointCloud<PointT> scanCloudPCL_;
   //! Input PCL Cloud Pointer
   typename pcl::PointCloud<PointT>::Ptr scanCloudPCLPtr_(typename pcl::PointCloud<PointT> scanCloudPCL_);
+  //! Target Dock PCL Cloud Pointer
+//  pcl::PointCloud<pcl::PointXYZRGB>::Ptr dockTargetPCLPtr_( pcl::PointCloud<pcl::PointXYZRGB> ());
+  pcl::PointCloud<pcl::PointXYZRGB> dockTargetPCL_;
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr dockTargetPCLPtr_;
+
 
   // Declaration Only
 //  void startDynamicReconfigureServer();
@@ -132,7 +139,6 @@ public:
     nh_.param("CL_points_delta", CL_points_delta_, CL_points_delta_);
 
 
-
     // Use a private node handle so that multiple instances
     // of the node can be run simultaneously while using different parameters.
     //        ros::NodeHandle pnh("~");
@@ -142,7 +148,24 @@ public:
   }
   
   void initDockParams(){
-    nh_.param("dock_wing_length", CL_points_delta_, CL_points_delta_);
+    std::string dockFilePath("/home/rwbot/dock_ws/src/docking/pcd/monkey.ply");
+    dockFilePath_ = dockFilePath;
+    nh_.param("dockFilePath", dockFilePath_, dockFilePath_);
+
+    std::cout << "initDockParams: DOCK TARGET CLOUD FILE PATH: " << dockFilePath_ << std::endl;
+
+//    ROS_INFO_STREAM("initDockParams: ASSIGNING POINT CLOUD POINTER");
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr dockTargetPCLPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+
+    ROS_INFO_STREAM("initDockParams: LOADING DOCK TARGET CLOUD FILE");
+    if(readPointCloudFile(dockFilePath_,dockTargetPCLPtr) == false){
+      ROS_ERROR_STREAM("initDockParams: FAILED TO LOAD TARGET DOCK FILE");
+    } else {
+      ROS_INFO_STREAM("initDockParams: SUCCESSFULLY LOADED TARGET DOCK FILE");
+      dockTargetPCLPtr_ = dockTargetPCLPtr;
+    }
+
   }
 
   //! Callback function for dynamic reconfigure server.
@@ -168,6 +191,21 @@ public:
       ROS_INFO_STREAM("New Input Cloud Topic");
       startSub(cloud_topic_);
     }
+
+    if (config.dock_filepath != dockFilePath_) {
+      dockFilePath_ = config.dock_filepath;
+      ROS_INFO_STREAM("configCallback: New Dock Target File Specified");
+      std::cout << "configCallback: CONFIG FILEPATH: " << config.dock_filepath << std::endl;
+      std::cout << "configCallback: DOCK TARGET FILEPATH: " << dockFilePath_ << std::endl;
+      ROS_INFO_STREAM("configCallback: LOADING DOCK TARGET CLOUD FILE");
+      if(readPointCloudFile(dockFilePath_,dockTargetPCLPtr_) == false){
+        ROS_ERROR_STREAM("configCallback: FAILED TO LOAD TARGET DOCK FILE");
+      } else {
+        ROS_WARN_STREAM("configCallback: SUCCESSFULLY LOADED TARGET DOCK FILE");
+      }
+
+    }
+
   }
 
   void startPub() {
@@ -199,11 +237,7 @@ public:
     lines_marker_.colors.clear();
   }
 
-  typename pcl::PointCloud<PointT>::Ptr loadPointCloudFile(const std::string& filePath){
-    typename pcl::PointCloud<PointT>::Ptr scanCloudPCLPtr(new pcl::PointCloud<PointT> ());
 
-    return scanCloudPCLPtr;
-  }
 
   void cloudCallback(const sensor_msgs::PointCloud2ConstPtr &msg) {
     header_ = msg->header;
@@ -212,6 +246,9 @@ public:
     clearGlobals();
 
     ROS_INFO_STREAM("Callback Called: ");
+
+    printDebugCloud(dockTargetPCLPtr_);
+
     // Container for original & filtered data
     /*
      * CONVERT POINTCLOUD ROS->PCL
@@ -628,7 +665,7 @@ public:
         new pcl::PointCloud<pcl::PointXYZ>);
     pcl::copyPointCloud(*cloudPointsProjectedPtr, *cloudPointsProjectedXYZPtr);
 
-    printDebugCloud(cloudPointsProjectedXYZPtr);
+//    printDebugCloud(cloudPointsProjectedXYZPtr);
 
     //        pcl::PointXYZ minPointProjected, maxPointProjected;
     pcl::PointXYZRGB minPoint, maxPoint;
@@ -937,6 +974,13 @@ public:
     debug_pub_.publish(debugCloudMsg);
   }
 
+  void printDebugCloud(typename pcl::PointCloud<pcl::PointXYZRGB>::Ptr debugCloudPtr) {
+    sensor_msgs::PointCloud2 debugCloudMsg;
+    pcl::toROSMsg(*debugCloudPtr, debugCloudMsg);
+    debugCloudMsg.header = header_;
+    debug_pub_.publish(debugCloudMsg);
+  }
+
   ///////////////// BEGIN MARK CLUSTER /////////////////
   //    visualization_msgs::Marker
   //    mark_cluster(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster,
@@ -1083,6 +1127,37 @@ public:
 //        std::cout << std::endl;
       }
 
+      bool readPointCloudFile(const std::string& filePath, pcl::PointCloud<pcl::PointXYZRGB>::Ptr PCLPtr) {
+
+        if (filePath.find(".ply") != std::string::npos) {
+          ROS_INFO_STREAM("readPointCloudFile: PLY file found");
+          // Load .ply file.
+          if (pcl::io::loadPLYFile(filePath, *PCLPtr) != 0) {
+            return false;
+          }
+          ROS_INFO_STREAM("readPointCloudFile: PLY file loaded");
+
+
+      } else if (filePath.find(".pcd") != std::string::npos) {
+          ROS_INFO_STREAM("readPointCloudFile: PCD file found");
+          // Load .pcd file.
+
+          if (pcl::io::loadPCDFile(filePath, *PCLPtr) != 0) {
+            return false;
+          }
+          ROS_INFO_STREAM("readPointCloudFile: PCD file loaded");
+
+        } else {
+
+          ROS_ERROR_STREAM("readPointCloudFile: Data format not supported.");
+          std::cout << "readPointCloudFile: FAILED CLOUD FILE PATH: " << filePath << std::endl;
+          return false;
+        }
+
+        ROS_INFO_STREAM("readPointCloudFile: SUCCESSFULLY Loaded point cloud with " << PCLPtr->height * PCLPtr->width << " points.");
+        return true;
+      }
+
 
   //! Global list of line segments for publisher
   jsk_recognition_msgs::SegmentArray segments_;
@@ -1104,9 +1179,6 @@ public:
   //! Delta for comparing two lines
   float CL_total_delta_;
 
-  //! Global list of line segments for publisher
-  jsk_recognition_msgs::SegmentArray segments_;
-  //! Global list of line markers for publisher
 
 
   //! RANSAC Maximum Iterations
@@ -1129,6 +1201,9 @@ public:
   bool found_Dock_;
   //! Dock Wing Length
   double dock_wing_length;
+
+  //! Dock target template filepath
+  std::string dockFilePath_;
   
 
   //! Leaf Size for Voxel Grid
@@ -1155,7 +1230,7 @@ public:
 template class SegmentLineNode<pcl::PointXYZRGB>;
 //  template class SegmentLineNode<pcl::PointXYZRGBA>;
 
-} // namespace docking
+//} // namespace docking
 
 //#include <docking/impl/SegmentLineNode.hpp>
 //#define PCL_INSTANTIATE_SegmentLineNode(T) template class PCL_EXPORTS
