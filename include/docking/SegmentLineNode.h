@@ -58,7 +58,7 @@
 //namespace docking {
 
 template <typename PointT> class SegmentLineNode {
-
+///////////////// BEGIN VARIABLES /////////////////
 public:
   SegmentLineNode(ros::NodeHandle nh) : nh_(nh) {
     startDynamicReconfigureServer();
@@ -68,6 +68,7 @@ public:
     initDockParams();
   }
   ~SegmentLineNode() {}
+
   ros::Publisher clusters_cloud_pub_;
   ros::Publisher clusters_pub_;
   ros::Publisher lines_cloud_pub_;
@@ -93,8 +94,73 @@ public:
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr dockTargetPCLPtr_;
 
 
-  // Declaration Only
-//  void startDynamicReconfigureServer();
+  //! Global list of line segments for publisher
+  jsk_recognition_msgs::SegmentArray segments_;
+  //! Global list of line markers for publisher
+  visualization_msgs::Marker lines_marker_;
+  //! Global list of line msgs for publisher
+  docking::LineArray lines_;
+  //! Global list of cluster msgs for publisher
+  docking::ClusterArray clusters_;
+  //! Global list of cluster msgs for publisher
+  docking::ClusterArray::Ptr clustersPtr_;
+
+  //! Delta for comparing two line centroids
+  float CL_centroid_delta_;
+  //! Delta for comparing two line coefficients
+  float CL_coefficient_delta_;
+  //! Delta for comparing two line segments
+  float CL_segment_delta_;
+  //! Delta for comparing two line points
+  float CL_points_delta_;
+  //! Delta for comparing two lines
+  float CL_total_delta_;
+
+  //! RANSAC Maximum Iterations
+  int RS_max_iter_;
+  //! RANSAC Minimum Inliers
+  int RS_min_inliers_;
+  //! RANSAC Distance Threshold
+  double RS_dist_thresh_;
+  //! Perform RANSAC after Clustering Points
+  bool RANSAC_on_clusters_;
+
+  //! EuclideanCluster Tolerance (m)
+  double EC_cluster_tolerance_;
+  //! EuclideanCluster Min Cluster Size
+  int EC_min_size_;
+  //! EuclideanCluster Max Cluster Size
+  int EC_max_size_;
+
+  //! Bool of dock search status
+  bool found_Dock_;
+  //! Dock Wing Length
+  double dock_wing_length;
+
+  //! Dock target template filepath
+  std::string dockFilePath_;
+
+  //! Leaf Size for Voxel Grid
+  double Voxel_leaf_size_;
+
+  //! Name of world frame
+  std::string world_frame_;
+  //! Name of robot frame
+  std::string robot_frame_;
+  //! Name of cloud frame
+  std::string cloud_frame_;
+  //! Name of cloud topic
+  std::string cloud_topic_;
+  //! Name of laser frame
+  std::string laser_frame_;
+  //! Name of laser topic
+  std::string laser_topic_;
+
+  std_msgs::Header header_;
+
+  ///////////////// END VARIABLES /////////////////
+
+
 
   // Declaration and Definition
   void startDynamicReconfigureServer() {
