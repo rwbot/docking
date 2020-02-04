@@ -65,6 +65,7 @@ public:
     initParams();
     startPub();
     startSub(cloud_topic_);
+    initGlobals();
     initDockParams();
   }
   ~SegmentLineNode() {}
@@ -274,6 +275,20 @@ public:
 
   }
 
+  void initGlobals(){
+//    clusters_ new (docking::ClusterArray());
+    docking::ClusterArray temp1 = docking::ClusterArray();
+//    docking::ClusterArray::Ptr tempPtr (docking::ClusterArray clusters_);
+    docking::ClusterArray::Ptr tempPtr (new docking::ClusterArray ());
+
+//    docking::ClusterArray::Ptr clustersPtr_ ( docking::ClusterArray clusters_);
+//    *clustersPtr_ = *tempPtr;
+    clustersPtr_ = tempPtr;
+    *clustersPtr_ = temp1;
+
+
+  }
+
   void startPub() {
     clusters_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("docking/clustersCloud", 1);
     clusters_pub_ = nh_.advertise<docking::ClusterArray>("docking/clusters", 1);
@@ -307,11 +322,14 @@ public:
 
   void cloudCallback(const sensor_msgs::PointCloud2ConstPtr &msg) {
     header_ = msg->header;
-    segments_.header = lines_.header = lines_marker_.header = header_;
+    clustersPtr_->header = clusters_.header = segments_.header = lines_.header = lines_marker_.header = header_;
 
     clearGlobals();
 
     ROS_INFO_STREAM("Callback Called: ");
+
+
+    ROS_INFO_STREAM("CLOUD CALLBACK: CALLED ");
 
     printDebugCloud(dockTargetPCLPtr_);
 
@@ -327,51 +345,58 @@ public:
     /* ========================================
      * CLUSTERING
      * ========================================*/
-    clusters_ = this->ClusterPoints(cloudPCLPtr, EC_cluster_tolerance_, EC_min_size_, EC_max_size_);
+//    clusters_ = this->ClusterPoints(cloudPCLPtr, EC_cluster_tolerance_, EC_min_size_, EC_max_size_);
 
-    ROS_INFO_STREAM("clusters.combinedCloud.frame_id " << clusters_.combinedCloud.header.frame_id);
+    ROS_INFO_STREAM("CLOUD CALLBACK: clustersPtr_.header " << clustersPtr_->header);
+
+    this->ClusterPoints(cloudPCLPtr, clustersPtr_, EC_cluster_tolerance_, EC_min_size_, EC_max_size_);
+
+    ROS_INFO_STREAM("CLOUD CALLBACK: CLUSTERING RETURNED " << clustersPtr_->clusters.size() << " CLUSTERS");
+
+    ROS_INFO_STREAM("CLOUD CALLBACK: clusters.combinedCloud.frame_id " << clustersPtr_->combinedCloud.header.frame_id);
 
     /* ========================================
      * RANSAC LINES
      * ========================================*/
 
-    ROS_INFO_STREAM("Distance Threshold: "<< RS_dist_thresh_ << " Max Iterations: " << RS_max_iter_);
+    ROS_INFO_STREAM("CLOUD CALLBACK: Distance Threshold: "<< RS_dist_thresh_ << " Max Iterations: " << RS_max_iter_);
     docking::LineArray lines;
     if (RANSAC_on_clusters_) {
       /* ========================================
        * RANSAC LINES FROM CLUSTERS
        * ========================================*/
-      lines = this->getRansacLinesOnCluster(clusters_);
-      ROS_INFO_STREAM("CALLING RANSAC ON CLUSTERED CLOUD: ");
+      lines = this->getRansacLinesOnCluster(*clustersPtr_);
+      ROS_INFO_STREAM("CLOUD CALLBACK: CALLING RANSAC ON CLUSTERED CLOUD ");
 
     } else {
       /* ========================================
        * RANSAC on WHOLE CLOUD
        * ========================================*/
-      ROS_INFO_STREAM("RAN-CLUS--CALLING RANSAC ON WHOLE CLOUD: ");
+      ROS_INFO_STREAM("CLOUD CALLBACK: RAN-CLUS--CALLING RANSAC ON WHOLE CLOUD: ");
 
       lines = this->getRansacLines(cloudPCLPtr);
     }
-    ROS_INFO_STREAM("RAN-CLUS-- COMPLETE");
+    ROS_INFO_STREAM("CLOUD CALLBACK: RAN-CLUS-- COMPLETE");
 
     /* ========================================
      * PUBLISH CLOUD
      * ========================================*/
 
-    clusters_cloud_pub_.publish(clusters_.combinedCloud);
+    clusters_cloud_pub_.publish(clustersPtr_->combinedCloud);
     clusters_pub_.publish(clusters_);
 
+    clusters_pub_.publish(clustersPtr_);
     lines_cloud_pub_.publish(lines.combinedCloud);
     //          docking::LineArray::Ptr linesPtr (new docking::LineArray(lines));
     lines_pub_.publish(lines);
 
     // Assign Dock Cluster
-    docking::Cluster dockCluster = clusters_.clusters.front();
+    docking::Cluster dockCluster = clustersPtr_->clusters.front();
     //          ROS_INFO_STREAM("CALLBACK: Publishing cluster with centroid " <<
     //          pubCluster.centroid);
 
     if(segments_.segments.size() != 0){
-      ROS_INFO_STREAM("CALLBACK: Publishing " << segments_.segments.size() << " SEGMENTS ");
+      ROS_INFO_STREAM("CLOUD CALLBACK: Publishing " << segments_.segments.size() << " SEGMENTS ");
       line_marker_pub_.publish(lines_marker_);
       line_segment_pub_.publish(segments_);
     }
@@ -519,7 +544,7 @@ public:
     int lineID = 0;
 
     // Iterate through clusters
-    for (std::vector<docking::Cluster>::const_iterator cit = clusters.clusters.begin();
+    for (std::vector<docking::Cluster>::iterator cit = clusters.clusters.begin();
          cit != clusters.clusters.end(); cit++)
     {
 
@@ -544,6 +569,9 @@ public:
 //            clit->clusterID = cit->clusterID;
 //            lines.lines.push_back(currentLines.lines.at(lineID));
             lines.lines.push_back(*clit);
+
+            cit->lines.lines.push_back(*clit);
+
         }
 
         ROS_INFO_STREAM("RAN-CLUS--COMBINING CLOUDS OF DETECTED LINES FROM CLUSTER ID " << cit->clusterID.data);
@@ -569,10 +597,11 @@ public:
   /// \param maxSize
   /// \return
   ///
-  docking::ClusterArray ClusterPoints(typename pcl::PointCloud<PointT>::Ptr inCloud, double clusterTolerance, int minSize, int maxSize) {
+  void ClusterPoints(typename pcl::PointCloud<PointT>::Ptr inCloud, docking::ClusterArray::Ptr clustersPtr, double clusterTolerance, int minSize, int maxSize) {
     std::cout << std::endl;
     // ROS_INFO_STREAM();
     ROS_INFO_STREAM("CLUSTERING Called: ");
+    ROS_INFO_STREAM("CLUSTERING: clustersPtr.header " << clustersPtr->header);
     //        ROS_INFO_STREAM("");
 //    ROS_INFO_STREAM("Cluster tolerance: " << clusterTolerance << " Min Points: " << minSize << " Max Points: " << maxSize);
 
@@ -606,7 +635,7 @@ public:
       cloudClusterPtr->height = 1;
       cloudClusterPtr->is_dense = true;
 
-      ROS_INFO_STREAM("Cluster " << i << " has "<< cloudClusterPtr->points.size() << " points");
+      ROS_INFO_STREAM("CLUSTERING: Cluster " << i << " has "<< cloudClusterPtr->points.size() << " points");
       // Add current cluster to list of clusters
       // ROS_INFO_STREAM("COLORING CLUSTER");
       ColorCloud(cloudClusterPtr, i);
@@ -618,18 +647,18 @@ public:
       // ROS_INFO_STREAM("ROSIFYING CLUSTER");
       docking::Cluster clusterMsg = rosifyCluster(cloudClusterPtr, currentPointIndicesPtr);
       clusterMsg.clusterID.data = i;
-      clusterMsg.header = clusterMsg.cloud.header = clusterMsg.points.header = header_;
+      clusterMsg.header = clusterMsg.cloud.header = clusterMsg.points.header = clustersPtr->header;
 
 //      clusterMsg.bbox = getBoundingBoxClusterOriented(cloudClusterPtr);
 //      clusterMsg.bbox.marker = markCluster(clusterMsg);
 //      clusterMsg.jbbox = bboxToJSK(clusterMsg.bbox);
 
-      clusters.clusters.push_back(clusterMsg);
+      clustersPtr->clusters.push_back(clusterMsg);
     }
-    // ROS_INFO_STREAM("CONVERTING COMBINED CLUSTER TO ROS MSG");
-    pcl::toROSMsg(combinedClustersCloud, clusters.combinedCloud);
-    clusters.header = clusters.combinedCloud.header = header_;
-    return clusters;
+     ROS_INFO_STREAM("CLUSTERING: CONVERTING COMBINED CLUSTER TO ROS MSG");
+    pcl::toROSMsg(combinedClustersCloud, clustersPtr->combinedCloud);
+    clustersPtr->combinedCloud.header = clustersPtr->header;
+    ROS_INFO_STREAM("CLUSTERING: FOUND " << clustersPtr->clusters.size() << " CLUSTERS");
   }
   ///////////////// END CLUSTER POINTS /////////////////
 
