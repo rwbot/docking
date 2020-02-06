@@ -316,11 +316,15 @@ public:
     lines_.lines.clear();
     lines_marker_.points.clear();
     lines_marker_.colors.clear();
+    clustersPtr_->clusters.clear();
   }
 
 
 
   void cloudCallback(const sensor_msgs::PointCloud2ConstPtr &msg) {
+
+    clearGlobals();
+
     header_ = msg->header;
     clustersPtr_->header = clusters_.header = segments_.header = lines_.header = lines_marker_.header = header_;
 
