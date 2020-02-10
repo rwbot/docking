@@ -15,6 +15,7 @@
 #include <docking/LineArray.h>
 #include <docking/MinMaxPoint.h>
 #include <docking/SegmentLineConfig.h>
+#include <docking/ICP.h>
 
 #include <jsk_recognition_msgs/BoundingBox.h>
 #include <jsk_recognition_msgs/PolygonArray.h>
@@ -39,6 +40,7 @@
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/registration/icp.h>
 
 #include <pcl/point_cloud.h>
 //#include <pcl/>
@@ -80,6 +82,9 @@ public:
   ros::Publisher bbox_pub_;     // Bounding box publisher
   ros::Publisher jsk_bbox_pub_; // Bounding box publisher
   ros::Publisher debug_pub_;    // debug publisher
+  ros::Publisher icp_in_pub_;   // ICP Input Cloud publisher
+  ros::Publisher icp_target_pub_; // ICP Target Cloud publisher
+  ros::Publisher icp_out_pub_;   // ICP Output Cloud publisher
   ros::Subscriber sub_;
   ros::NodeHandle nh_;
   //! Dynamic reconfigure server.
@@ -90,8 +95,6 @@ public:
   //! Input PCL Cloud Pointer
   typename pcl::PointCloud<PointT>::Ptr scanCloudPCLPtr_(typename pcl::PointCloud<PointT> scanCloudPCL_);
   //! Target Dock PCL Cloud Pointer
-//  pcl::PointCloud<pcl::PointXYZRGB>::Ptr dockTargetPCLPtr_( pcl::PointCloud<pcl::PointXYZRGB> ());
-  pcl::PointCloud<pcl::PointXYZRGB> dockTargetPCL_;
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr dockTargetPCLPtr_;
 
 
@@ -181,6 +184,7 @@ public:
   }
 
   void initParams() {
+    std::cout << "initParams: INITIALIZING PARAMS FROM PARAM SERVER: " << std::endl;
     // Initialize node parameters from launch file or command line.
     nh_.param("world_frame", world_frame_, world_frame_);
     nh_.param("robot_frame", robot_frame_, robot_frame_);
@@ -188,6 +192,10 @@ public:
     nh_.param("cloud_topic", cloud_topic_, cloud_topic_);
     nh_.param("laser_frame", laser_frame_, laser_frame_);
     nh_.param("laser_topic", laser_topic_, laser_topic_);
+
+    std::cout << "initParams: CURRENT LASER TOPIC: " << laser_topic_ << std::endl;
+
+    std::cout << "initParams: CURRENT CLOUD TOPIC: " << cloud_topic_ << std::endl;
 
     nh_.param("RS_max_iter", RS_max_iter_, RS_max_iter_);
     nh_.param("RS_min_inliers", RS_min_inliers_, RS_min_inliers_);
@@ -205,6 +213,9 @@ public:
     nh_.param("CL_segment_delta", CL_segment_delta_, CL_segment_delta_);
     nh_.param("CL_points_delta", CL_points_delta_, CL_points_delta_);
 
+    nh_.param("dock_filepath", dockFilePath_, dockFilePath_);
+
+    std::cout << "initParams: CURRENT TARGET CLOUD FILE PATH: " << dockFilePath_ << std::endl;
 
     // Use a private node handle so that multiple instances
     // of the node can be run simultaneously while using different parameters.
@@ -213,31 +224,38 @@ public:
     //        pnh.param("RS_dist_thresh", RS_dist_thresh_, RS_dist_thresh_);
     //        pnh.param("Voxel_leaf_size", Voxel_leaf_size_, Voxel_leaf_size_);
   }
-  
+
   void initDockParams(){
-    std::string dockFilePath("/home/rwbot/dock_ws/src/docking/pcd/monkey.ply");
-    dockFilePath_ = dockFilePath;
-    nh_.param("dockFilePath", dockFilePath_, dockFilePath_);
+    //    std::string dockFilePath("/home/rwbot/dock_ws/src/docking/pcd/dock_cloud_perfect.ply");
+    //    std::string dockFilePath("UNSPECIFIED");
+    ROS_INFO_STREAM("initDockParams: INITIALIZING TARGET CLOUD FILE PATH");
 
-    std::cout << "initDockParams: DOCK TARGET CLOUD FILE PATH: " << dockFilePath_ << std::endl;
+    bool dockFilepathExists = nh_.hasParam("dock_filepath");
 
-//    ROS_INFO_STREAM("initDockParams: ASSIGNING POINT CLOUD POINTER");
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr dockTargetPCLPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
+    if(dockFilepathExists){
+      ROS_INFO_STREAM("initDockParams: PARAM SERVER TARGET CLOUD FILE PATH: " << dockFilePath_);
 
+    //    ROS_INFO_STREAM("initDockParams: ASSIGNING POINT CLOUD POINTER");
+      pcl::PointCloud<pcl::PointXYZRGB>::Ptr dockTargetPCLPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
 
-    ROS_INFO_STREAM("initDockParams: LOADING DOCK TARGET CLOUD FILE");
-    if(readPointCloudFile(dockFilePath_,dockTargetPCLPtr) == false){
-      ROS_ERROR_STREAM("initDockParams: FAILED TO LOAD TARGET DOCK FILE");
+      ROS_INFO_STREAM("initDockParams: LOADING DOCK TARGET CLOUD FILE" << dockFilePath_);
+      if(readPointCloudFile(dockFilePath_,dockTargetPCLPtr) == false){
+        ROS_ERROR_STREAM("initDockParams: FAILED TO LOAD TARGET DOCK FILE");
+      } else {
+        ROS_INFO_STREAM("initDockParams: SUCCESSFULLY LOADED TARGET DOCK FILE");
+        dockTargetPCLPtr_ = dockTargetPCLPtr;
+      }
+
     } else {
-      ROS_INFO_STREAM("initDockParams: SUCCESSFULLY LOADED TARGET DOCK FILE");
-      dockTargetPCLPtr_ = dockTargetPCLPtr;
-    }
 
-  }
+      ROS_ERROR_STREAM("initDockParams: NO PARAMETER dock_filepath EXISTS FOR TARGET CLOUD FILE PATH");
+    }
+}
 
   //! Callback function for dynamic reconfigure server.
   void configCallback(docking::SegmentLineConfig &config,
                       uint32_t level __attribute__((unused))) {
+
     RS_max_iter_ = config.RS_max_iter;
     RS_min_inliers_ = config.RS_min_inliers;
     RS_dist_thresh_ = config.RS_dist_thresh;
@@ -255,11 +273,20 @@ public:
 
     if (config.cloud_topic != cloud_topic_) {
       cloud_topic_ = config.cloud_topic;
-      ROS_INFO_STREAM("New Input Cloud Topic");
+      ROS_INFO_STREAM("configCallback: New Input Cloud Topic");
       startSub(cloud_topic_);
     }
 
-    if (config.dock_filepath != dockFilePath_) {
+//    if (config.laser_topic != laser_topic_) {
+//      laser_topic_ = config.laser_topic;
+//      ROS_INFO_STREAM("configCallback: NEW Input Laser Topic" << laser_topic_);
+//    }
+
+
+    if(dockFilePath_==""){
+      std::cout << "configCallback: dockFilePath FILEPATH NOT SPECIFIED " << dockFilePath_ << std::endl;
+    }
+    else if (config.dock_filepath != dockFilePath_) {
       dockFilePath_ = config.dock_filepath;
       ROS_INFO_STREAM("configCallback: New Dock Target File Specified");
       std::cout << "configCallback: CONFIG FILEPATH: " << config.dock_filepath << std::endl;
@@ -285,8 +312,6 @@ public:
 //    *clustersPtr_ = *tempPtr;
     clustersPtr_ = tempPtr;
     *clustersPtr_ = temp1;
-
-
   }
 
   void startPub() {
@@ -303,6 +328,10 @@ public:
     jsk_bbox_pub_ = nh_.advertise<jsk_recognition_msgs::BoundingBox>("docking/jsk_bbox", 1);
 
     debug_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("docking/debugCloud", 1);
+
+    icp_in_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZRGB>>("docking/icp_in_pub", 1);
+    icp_target_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZRGB>>("docking/icp_target_pub", 1);
+    icp_out_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZRGB>>("docking/icp_out_pub", 1);
   }
 
   void startSub(std::string cloud_topic) {
@@ -328,10 +357,12 @@ public:
     header_ = msg->header;
     clustersPtr_->header = clusters_.header = segments_.header = lines_.header = lines_marker_.header = header_;
 
-    clearGlobals();
 
-    ROS_INFO_STREAM("Callback Called: ");
 
+
+//    clustersPtr_. = &clusters_;
+//    clustersPtr_.reset(clusters_);
+//    pcl::PointCloud<pcl::PointXYZRGB>::Ptr dockTargetPCLPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
 
     ROS_INFO_STREAM("CLOUD CALLBACK: CALLED ");
 
@@ -387,9 +418,9 @@ public:
      * ========================================*/
 
     clusters_cloud_pub_.publish(clustersPtr_->combinedCloud);
-    clusters_pub_.publish(clusters_);
 
     clusters_pub_.publish(clustersPtr_);
+
     lines_cloud_pub_.publish(lines.combinedCloud);
     //          docking::LineArray::Ptr linesPtr (new docking::LineArray(lines));
     lines_pub_.publish(lines);
@@ -408,7 +439,24 @@ public:
     bbox_pub_.publish(dockCluster.bbox);
     jsk_bbox_pub_.publish(bboxToJSK(dockCluster.bbox));
 
-    ROS_INFO_STREAM("CALLBACK: CALLBACK COMPLETE");
+
+    /* ========================================
+     * ITERATIVE CLOSEST POINT
+     * ========================================*/
+
+    ROS_INFO_STREAM("CLOUD CALLBACK: BEGINNING ITERATIVE CLOSEST POINT");
+
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr ICPInputCloudPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr ICPOutCloudPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
+    ICP(ICPInputCloudPtr, dockTargetPCLPtr_, ICPOutCloudPtr);
+
+
+    ICPInputCloudPtr->header.frame_id = dockTargetPCLPtr_->header.frame_id = ICPOutCloudPtr->header.frame_id = header_.frame_id;
+    icp_in_pub_.publish(ICPInputCloudPtr);
+    icp_target_pub_.publish(dockTargetPCLPtr_);
+    icp_out_pub_.publish(ICPOutCloudPtr);
+
+    ROS_INFO_STREAM("CLOUD CALLBACK: CALLBACK COMPLETE");
     std::cout << std::endl;
   }
 
@@ -582,6 +630,8 @@ public:
         typename pcl::PointCloud<PointT> currentLinesCloudPCL;
         pcl::fromROSMsg(currentLines.combinedCloud, currentLinesCloudPCL);
         linesCombinedPCL = linesCombinedPCL + currentLinesCloudPCL;
+
+
     }
 
     ROS_INFO_STREAM("RAN-CLUS--RETURNING ALL DETECTED LINES FROM ALL CLUSTERS");
@@ -1257,71 +1307,43 @@ public:
         return true;
       }
 
+      ///////////////// BEGIN ICP /////////////////
 
-  //! Global list of line segments for publisher
-  jsk_recognition_msgs::SegmentArray segments_;
-  //! Global list of line markers for publisher
-  visualization_msgs::Marker lines_marker_;
-  //! Global list of line msgs for publisher
-  docking::LineArray lines_;
-  //! Global list of cluster msgs for publisher
-  docking::ClusterArray clusters_;
+      bool ICP(pcl::PointCloud<pcl::PointXYZRGB>::Ptr inputCloudPtr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr targetPCLPtr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr outCloudPtr) {
+        // Objects for storing the point clouds.
+//        pcl::PointCloud<pcl::PointXYZRGB>::Ptr targetCloud(new pcl::PointCloud<pcl::PointXYZ>);
+//        pcl::PointCloud<pcl::PointXYZRGB>::Ptr outCloudPtr(new pcl::PointCloud<pcl::PointXYZ>);
 
-  //! Delta for comparing two line centroids
-  float CL_centroid_delta_;
-  //! Delta for comparing two line coefficients
-  float CL_coefficient_delta_;
-  //! Delta for comparing two line segments
-  float CL_segment_delta_;
-  //! Delta for comparing two line points
-  float CL_points_delta_;
-  //! Delta for comparing two lines
-  float CL_total_delta_;
+        // ICP object.
+        pcl::IterativeClosestPoint<pcl::PointXYZRGB, pcl::PointXYZRGB> registration;
+        registration.setInputSource(inputCloudPtr);
+        registration.setInputTarget(targetPCLPtr);
+
+        registration.align(*outCloudPtr);
+        if (registration.hasConverged())
+        {
+          std::cout << "ICP converged." << std::endl
+                << "The score is " << registration.getFitnessScore() << std::endl;
+          std::cout << "Transformation matrix:" << std::endl;
+          std::cout << registration.getFinalTransformation() << std::endl;
+        }
+        else std::cout << "ICP did not converge." << std::endl;
+      }
+      ///////////////// END ICP /////////////////
+
+      bool clusterICP(docking::ClusterArray::Ptr clustersPtr){
+
+        for (std::vector<docking::Cluster>::iterator cit = clustersPtr->clusters.begin();
+             cit != clustersPtr->clusters.end(); cit++)
+        {
+          ROS_INFO_STREAM("ICP-CLUS--PERFORMING ICP ON CLUSTER ID " << cit->clusterID.data);
+          typename pcl::PointCloud<PointT>::Ptr cloudPCLPtr(new pcl::PointCloud<PointT>());
+          pcl::fromROSMsg(cit->cloud, *cloudPCLPtr);
+          cloudPCLPtr->header.seq = cit->clusterID.data;
+        }
+      }
 
 
-
-  //! RANSAC Maximum Iterations
-  int RS_max_iter_;
-  //! RANSAC Minimum Inliers
-  int RS_min_inliers_;
-  //! RANSAC Distance Threshold
-  double RS_dist_thresh_;
-  //! Perform RANSAC after Clustering Points
-  bool RANSAC_on_clusters_;
-
-  //! EuclideanCluster Tolerance (m)
-  double EC_cluster_tolerance_;
-  //! EuclideanCluster Min Cluster Size
-  int EC_min_size_;
-  //! EuclideanCluster Max Cluster Size
-  int EC_max_size_;
-
-  //! Bool of dock search status
-  bool found_Dock_;
-  //! Dock Wing Length
-  double dock_wing_length;
-
-  //! Dock target template filepath
-  std::string dockFilePath_;
-  
-
-  //! Leaf Size for Voxel Grid
-  double Voxel_leaf_size_;
-
-  //! Name of world frame
-  std::string world_frame_;
-  //! Name of robot frame
-  std::string robot_frame_;
-  //! Name of cloud frame
-  std::string cloud_frame_;
-  //! Name of cloud topic
-  std::string cloud_topic_;
-  //! Name of laser frame
-  std::string laser_frame_;
-  //! Name of laser topic
-  std::string laser_topic_;
-
-  std_msgs::Header header_;
 };
 
 //  template class SegmentLineNode<pcl::PointXYZ>;

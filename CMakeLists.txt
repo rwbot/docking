@@ -73,6 +73,7 @@ find_package(catkin REQUIRED COMPONENTS
    BoundingBox.msg
    Dock.msg
    MinMaxPoint.msg
+   ICP.msg
 #   Message2.msg
  )
 
