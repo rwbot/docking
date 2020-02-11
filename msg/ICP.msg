@@ -1,3 +1,3 @@
 std_msgs/Header header
-geometry_msgs/Pose pose
+geometry_msgs/PoseStamped poseStamped
 float64 score

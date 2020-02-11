@@ -42,6 +42,7 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/registration/icp.h>
 
+
 #include <pcl/point_cloud.h>
 //#include <pcl/>
 #include <pcl/filters/voxel_grid.h>
@@ -79,6 +80,7 @@ public:
   ros::Publisher line_marker_pub_;
   ros::Publisher line_segment_pub_;
   ros::Publisher dock_marker_pub_;
+  ros::Publisher dock_pose_pub_;
   ros::Publisher bbox_pub_;     // Bounding box publisher
   ros::Publisher jsk_bbox_pub_; // Bounding box publisher
   ros::Publisher debug_pub_;    // debug publisher
@@ -143,6 +145,8 @@ public:
 
   //! Dock target template filepath
   std::string dockFilePath_;
+  //! ICP Fitness Score Threshold
+  double icpScore_;
 
   //! Leaf Size for Voxel Grid
   double Voxel_leaf_size_;
@@ -214,6 +218,7 @@ public:
     nh_.param("CL_points_delta", CL_points_delta_, CL_points_delta_);
 
     nh_.param("dock_filepath", dockFilePath_, dockFilePath_);
+    nh_.param("icp_score", icpScore_, icpScore_);
 
     std::cout << "initParams: CURRENT TARGET CLOUD FILE PATH: " << dockFilePath_ << std::endl;
 
@@ -271,6 +276,8 @@ public:
     CL_points_delta_ = config.CL_points_delta;
     CL_total_delta_ = config.CL_total_delta;
 
+    icpScore_ = config.icp_score;
+
     if (config.cloud_topic != cloud_topic_) {
       cloud_topic_ = config.cloud_topic;
       ROS_INFO_STREAM("configCallback: New Input Cloud Topic");
@@ -324,6 +331,7 @@ public:
     line_marker_pub_ = nh_.advertise<visualization_msgs::Marker>("docking/lines_marker", 1);
 
     dock_marker_pub_ = nh_.advertise<visualization_msgs::Marker>("docking/dock_marker", 1);
+    dock_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("docking/dock_pose", 1);
     bbox_pub_ = nh_.advertise<docking::BoundingBox>("docking/bbox", 1);
     jsk_bbox_pub_ = nh_.advertise<jsk_recognition_msgs::BoundingBox>("docking/jsk_bbox", 1);
 
@@ -366,7 +374,7 @@ public:
 
     ROS_INFO_STREAM("CLOUD CALLBACK: CALLED ");
 
-    printDebugCloud(dockTargetPCLPtr_);
+//    printDebugCloud(dockTargetPCLPtr_);
 
     // Container for original & filtered data
     /*
@@ -448,13 +456,19 @@ public:
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr ICPInputCloudPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr ICPOutCloudPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
-    ICP(ICPInputCloudPtr, dockTargetPCLPtr_, ICPOutCloudPtr);
+    docking::Cluster::Ptr dockClusterPtr(new docking::Cluster());
+//    ICP(ICPInputCloudPtr, dockTargetPCLPtr_, ICPOutCloudPtr);
+    bool icpSuccess = clusterArrayICP(clustersPtr_, dockTargetPCLPtr_,dockClusterPtr);
 
 
     ICPInputCloudPtr->header.frame_id = dockTargetPCLPtr_->header.frame_id = ICPOutCloudPtr->header.frame_id = header_.frame_id;
-    icp_in_pub_.publish(ICPInputCloudPtr);
+    if(icpSuccess){
+      icp_in_pub_.publish(dockClusterPtr->cloud);
+      icp_out_pub_.publish(dockClusterPtr->icpCombinedCloud);
+      dock_pose_pub_.publish(dockClusterPtr->icp.poseStamped);
+    }
     icp_target_pub_.publish(dockTargetPCLPtr_);
-    icp_out_pub_.publish(ICPOutCloudPtr);
+
 
     ROS_INFO_STREAM("CLOUD CALLBACK: CALLBACK COMPLETE");
     std::cout << std::endl;
@@ -1205,10 +1219,10 @@ public:
       float segmentDelta = compareSegments(l1.segment, l2.segment);
       float pointsDelta = comparePointIndices(l1.points, l2.points);
 
-       ROS_INFO_STREAM("COMPARING LINES");
+//       ROS_INFO_STREAM("COMPARING LINES");
        printLineInfo(l1);
        printLineInfo(l2);
-       ROS_INFO_STREAM("COMPARING LINES DELTA - Centroid: " << centroidDelta << " Points: " << pointsDelta << " Coefficients: " << coefficientDelta << " Segment: " << segmentDelta);
+//       ROS_INFO_STREAM("COMPARING LINES DELTA - Centroid: " << centroidDelta << " Points: " << pointsDelta << " Coefficients: " << coefficientDelta << " Segment: " << segmentDelta);
 
        totalDelta = centroidDelta + coefficientDelta + segmentDelta + pointsDelta;
        totalDelta = totalDelta/4;
@@ -1223,27 +1237,27 @@ public:
     void updateLineList(docking::Line line)
     {
       lines_.header = header_;
-      ROS_INFO_STREAM("UPDATING LINE LIST");
+//      ROS_INFO_STREAM("UPDATING LINE LIST");
       bool doesExist = false;
       float lineDelta;
       for (size_t i =0; i < lines_.lines.size(); i++){
         doesExist = compareLines(line, lines_.lines.at(i));
 //        ROS_INFO_STREAM("COMPARE LINES - DETECTED LINE " << line);
 //        ROS_INFO_STREAM("COMPARE LINES - LINE LIST INDEX " << i << " " << lines_.lines.at(i));
-        ROS_INFO_STREAM("UPDATING LINE LIST - DELTA: " << lineDelta);
+//        ROS_INFO_STREAM("UPDATING LINE LIST - DELTA: " << lineDelta);
       }
 
       if(!doesExist){
-        ROS_INFO_STREAM("UPDATING LINE LIST - LINE IS UNIQUE, ADDING TO LIST");
+//        ROS_INFO_STREAM("UPDATING LINE LIST - LINE IS UNIQUE, ADDING TO LIST");
         lines_.lines.push_back(line);
       } else if (lines_.lines.size() == 0){
-        ROS_INFO_STREAM("UPDATING LINE LIST - LIST IS EMPTY, ADDING TO LIST");
+//        ROS_INFO_STREAM("UPDATING LINE LIST - LIST IS EMPTY, ADDING TO LIST");
         lines_.lines.push_back(line);
       } else {
-        ROS_INFO_STREAM("UPDATING LINE LIST - LINE ALREADY EXISTS");
+//        ROS_INFO_STREAM("UPDATING LINE LIST - LINE ALREADY EXISTS");
       }
 
-      ROS_INFO_STREAM("UPDATING LINE LIST - TOTAL LINES = " << lines_.lines.size());
+//      ROS_INFO_STREAM("UPDATING LINE LIST - TOTAL LINES = " << lines_.lines.size());
       std::cout << std::endl;
     }
 
@@ -1309,40 +1323,104 @@ public:
 
       ///////////////// BEGIN ICP /////////////////
 
-      bool ICP(pcl::PointCloud<pcl::PointXYZRGB>::Ptr inputCloudPtr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr targetPCLPtr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr outCloudPtr) {
-        // Objects for storing the point clouds.
-//        pcl::PointCloud<pcl::PointXYZRGB>::Ptr targetCloud(new pcl::PointCloud<pcl::PointXYZ>);
-//        pcl::PointCloud<pcl::PointXYZRGB>::Ptr outCloudPtr(new pcl::PointCloud<pcl::PointXYZ>);
+      bool ICP(pcl::PointCloud<pcl::PointXYZRGB>::Ptr inputCloudPtr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr targetPCLPtr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr outCloudPtr,pcl::IterativeClosestPoint<pcl::PointXYZRGB, pcl::PointXYZRGB>::Ptr registrationPtr) {
 
         // ICP object.
-        pcl::IterativeClosestPoint<pcl::PointXYZRGB, pcl::PointXYZRGB> registration;
-        registration.setInputSource(inputCloudPtr);
-        registration.setInputTarget(targetPCLPtr);
-
-        registration.align(*outCloudPtr);
-        if (registration.hasConverged())
+//        pcl::IterativeClosestPoint<pcl::PointXYZRGB, pcl::PointXYZRGB> registration;
+        ROS_INFO_STREAM("ICP--ASSIGNING CLOUD POINTERS");
+        registrationPtr->setInputSource(inputCloudPtr);
+        registrationPtr->setInputTarget(targetPCLPtr);
+        ROS_INFO_STREAM("ICP--ALIGNING CLOUDS");
+        registrationPtr->align(*outCloudPtr);
+        ROS_INFO_STREAM("ICP--CHECKING CONVERGENCE");
+        if (registrationPtr->hasConverged())
         {
           std::cout << "ICP converged." << std::endl
-                << "The score is " << registration.getFitnessScore() << std::endl;
+                << "The score is " << registrationPtr->getFitnessScore() << std::endl;
           std::cout << "Transformation matrix:" << std::endl;
-          std::cout << registration.getFinalTransformation() << std::endl;
+          std::cout << registrationPtr->getFinalTransformation() << std::endl;
+          return true;
         }
-        else std::cout << "ICP did not converge." << std::endl;
+        else
+        {
+          std::cout << "ICP did not converge." << std::endl;
+          return false;
+        }
+
       }
       ///////////////// END ICP /////////////////
 
-      bool clusterICP(docking::ClusterArray::Ptr clustersPtr){
+      ///////////////// BEGIN clusterICP /////////////////
+      void clusterICP(docking::Cluster::Ptr clusterPtr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr targetPCLPtr){
 
-        for (std::vector<docking::Cluster>::iterator cit = clustersPtr->clusters.begin();
-             cit != clustersPtr->clusters.end(); cit++)
-        {
-          ROS_INFO_STREAM("ICP-CLUS--PERFORMING ICP ON CLUSTER ID " << cit->clusterID.data);
-          typename pcl::PointCloud<PointT>::Ptr cloudPCLPtr(new pcl::PointCloud<PointT>());
-          pcl::fromROSMsg(cit->cloud, *cloudPCLPtr);
-          cloudPCLPtr->header.seq = cit->clusterID.data;
-        }
+          ROS_INFO_STREAM("ICP-CLUS--PROCESSING CLUSTER ID " << clusterPtr->clusterID.data);
+
+          typename pcl::PointCloud<PointT>::Ptr inCloudPCLPtr(new pcl::PointCloud<PointT>());
+          typename pcl::PointCloud<PointT>::Ptr outCloudPCLPtr(new pcl::PointCloud<PointT>());
+          pcl::fromROSMsg(clusterPtr->cloud, *inCloudPCLPtr);
+          ROS_INFO_STREAM("ICP-CLUS--CREATING ICP REGISTRATION OBJECT ");
+          // ICP object.
+          pcl::IterativeClosestPoint<pcl::PointXYZRGB, pcl::PointXYZRGB>::Ptr registrationPtr (new pcl::IterativeClosestPoint<pcl::PointXYZRGB, pcl::PointXYZRGB>());
+          ROS_INFO_STREAM("ICP-CLUS--PERFORMING ICP ON CLUSTER ID " << clusterPtr->clusterID.data);
+          bool success = ICP(inCloudPCLPtr, targetPCLPtr, outCloudPCLPtr, registrationPtr);
+          if(success){
+            ROS_INFO_STREAM("ICP-CLUS-- SUCCESS ICP ON CLUSTER ID " << clusterPtr->clusterID.data);
+            sensor_msgs::PointCloud2 ICPCombinedCloud;
+            pcl::toROSMsg(*outCloudPCLPtr,ICPCombinedCloud);
+            clusterPtr->icpCombinedCloud = ICPCombinedCloud;
+            clusterPtr->icp.score = registrationPtr->getFitnessScore();
+            Eigen::Matrix4f transformation = registrationPtr->final_transformation_;
+
+            clusterPtr->icp.poseStamped.pose = Matrix4TFtoPose(transformation);
+            clusterPtr->icp.poseStamped.header = header_;
+
+            ROS_INFO_STREAM("ICP-CLUS-- CLUSTER ID " << clusterPtr->clusterID.data << " POSE: " << clusterPtr->icp.poseStamped);
+            std::cout << std::endl;
+            ROS_INFO_STREAM("ICP-CLUS-- CLUSTER ID " << clusterPtr->clusterID.data << " ICP SCORE: " << clusterPtr->icp.score);
+            ROS_INFO_STREAM("ICP-CLUS-- ICP THRESHOLD SCORE: " << icpScore_);
+            if(clusterPtr->icp.score < icpScore_){
+                clusterPtr->isDock.data = true;
+                ROS_WARN_STREAM("ICP-CLUS-- CLUSTER ID " << clusterPtr->clusterID.data << " SUCCESSFULLY IDENTIFIED AS DOCK!!!!!!!!!!");
+            }
+          } else {
+            ROS_ERROR_STREAM("ICP-CLUS-- FAILED ICP ON CLUSTER ID " << clusterPtr->clusterID.data);
+          }
+
       }
+      ///////////////// END clusterICP /////////////////
 
+      ///////////////// BEGIN clusterArrayICP /////////////////
+      bool clusterArrayICP(docking::ClusterArray::Ptr clustersPtr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr targetPCLPtr, docking::Cluster::Ptr dockClusterPtr)
+      {
+      ROS_INFO_STREAM("ICP-CLUS-ARRAY--BEGINNING ICP ON CLUSTERS ");
+
+
+//        for (std::vector<docking::Cluster>::iterator cit = clustersPtr->clusters.begin();
+//             cit != clustersPtr->clusters.end(); cit++)
+          for(size_t i=0; i<clustersPtr->clusters.size();i++)
+        {
+          docking::Cluster::Ptr currentClusterPtr(new docking::Cluster());
+          *currentClusterPtr = clustersPtr->clusters.at(i);
+          clusterICP(currentClusterPtr, targetPCLPtr);
+          clustersPtr->clusters.at(i) = *currentClusterPtr;
+          if(currentClusterPtr->isDock.data){
+            ROS_WARN_STREAM("ICP-CLUS-ARRAY--DOCK POTENTIALLY IDENTIFIED ");
+            *dockClusterPtr = clustersPtr->clusters.at(i);
+          }
+
+        }
+
+      ROS_INFO_STREAM("ICP-CLUS-ARRAY--COMPLETED PERFORMING ICP ON CLUSTERS ");
+      ROS_INFO_STREAM("ICP-CLUS-ARRAY--dockClusterPtr->isDock.data = " << dockClusterPtr->isDock.data);
+
+      if(dockClusterPtr->isDock.data){
+        ROS_WARN_STREAM("ICP-CLUS-ARRAY--DOCK SUCCESSFULLY IDENTIFIED ");
+        return true;
+      }
+      ROS_WARN_STREAM("ICP-CLUS-ARRAY--UNABLE TO IDENTIFY DOCK");
+      return false;
+      }
+      ///////////////// END clusterArrayICP /////////////////
 
 };
 

@@ -6,3 +6,5 @@ jsk_recognition_msgs/BoundingBox jbbox
 std_msgs/Int32 clusterID
 docking/LineArray lines
 docking/ICP icp
+sensor_msgs/PointCloud2 icpCombinedCloud
+std_msgs/Bool isDock

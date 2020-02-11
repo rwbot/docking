@@ -27,6 +27,7 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_ros
   visualization_msgs
   jsk_recognition_msgs
+  tf_conversions
 #  PCL 1.8 REQUIRED
 )
 
