@@ -1,4 +1,4 @@
-#ifndef PCLHELPERS_H
+﻿#ifndef PCLHELPERS_H
 #define PCLHELPERS_H
 
 // Auto-generated from cfg/ directory.
@@ -35,6 +35,7 @@
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/registration/icp.h>
 
 #include <pcl/point_cloud.h>
 //#include <pcl/>
@@ -48,8 +49,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
-
-
+#include <tf/tf.h>
+#include <tf_conversions/tf_eigen.h>
 
 Eigen::Vector4f toEigen(pcl::ModelCoefficients pmc){
   pcl::ModelCoefficients::Ptr pmcPtr (new pcl::ModelCoefficients(pmc));
@@ -61,6 +62,76 @@ Eigen::Vector4f toEigen(pcl::ModelCoefficients pmc){
   Eigen::Vector4f ev4f (pmcPtr->values.data());
   return ev4f;
 }
+
+geometry_msgs::Pose Matrix4TFtoPose(Eigen::Matrix4f m4f){
+
+  Eigen::Matrix4d m4d = m4f.cast <double> ();
+  geometry_msgs::Pose pose;
+
+  Eigen::Matrix3d rot3x3(3,3);
+//  ROS_INFO_STREAM("Matrix4TFtoPose-- Extracting Rotation Matrix in Eigen::Matrix3d ");
+  rot3x3 = m4d.block<3,3>(0,0);
+
+//  rot3x3.topLeftCorner<2,2>() = m4d.topLeftCorner<2,2>();
+//ROS_INFO_STREAM("Matrix4TFtoPose-- Copying Rotation Matrix into tf::Matrix3x3");
+  tf::Matrix3x3 tfm3(rot3x3(0,0),rot3x3(1,0),rot3x3(2,0),
+                rot3x3(0,1),rot3x3(1,1),rot3x3(2,1),
+                rot3x3(0,2),rot3x3(1,2),rot3x3(2,2)) ;
+
+
+//  tf::matrixEigenToTF(eq,tfm3);
+
+
+//  tf::transformEigenToTF(rot3x3,tf);
+
+//  Eigen::Quaterniond eq(rot3x3);
+
+//  ROS_INFO_STREAM("Matrix4TFtoPose-- Extracting Translation Vector into tf::Vector3");
+  tf::Vector3 tfv3(m4d(0,3),m4d(1,3),m4d(2,3));
+
+//  ROS_INFO_STREAM("Matrix4TFtoPose-- Creating tf::Transform object");
+  tf::Transform tf(tfm3, tfv3);
+//  ROS_INFO_STREAM("Matrix4TFtoPose-- Creating tf::Pose object");
+  tf::Pose tfpose(tf);
+//  ROS_INFO_STREAM("Matrix4TFtoPose-- Converting tf::Pose to geometry_msgs::Pose");
+  tf::poseTFToMsg(tfpose,pose);
+
+
+//  tf::Quaternion tfq;
+//  tf::quaternionEigenToTF(eq,tfq);
+
+
+//  ROS_INFO_STREAM("Matrix4TFtoPose-- tf::Matrix3x3.getRotation(& tf::Quaternion) ");
+//  tfm3.getRotation(tfq);
+
+//  ROS_INFO_STREAM("Matrix4TFtoPose-- Manually attempting to normalize quarternion ");
+//  tfq.normalize();
+
+//  geometry_msgs::Quaternion rosq;
+//  ROS_INFO_STREAM("Matrix4TFtoPose-- tf::quaternionTFToMsg(tfq,rosq)");
+//  tf::quaternionTFToMsg(tfq,rosq);
+
+//  ROS_INFO_STREAM("Matrix4TFtoPose-- Assigning converted ros quarternion to rose pose orientation");
+//  pose.orientation = rosq;
+
+////  Eigen::Vector3f ev3 = rot3x3.col(3);
+
+////  tf::vectorEigenToTF(ev3, tfv3);
+////  geometry_msgs::Vector3 rosv3;
+////  tf::vector3TFToMsg(tfv3, rosv3);
+////  pose.position = rosv3;
+
+//  pose.position.x = double(m4f(0,3));
+//  pose.position.y = double(m4f(1,3));
+//  pose.position.z = double(m4m4f2,3));
+
+//    pose.position.x = m4d(0,3);
+//    pose.position.y = m4d(1,3);
+//    pose.position.z = m4d(2,3);
+
+  return pose;
+}
+
 
 double getAngle(docking::Line l1, docking::Line l2){
   double angle;
