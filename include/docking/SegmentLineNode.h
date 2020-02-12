@@ -41,7 +41,10 @@
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/registration/icp.h>
-
+#include <pcl/registration/icp_nl.h>
+#include <pcl/registration/transformation_estimation_2D.h>
+#include <pcl/registration/transformation_estimation_lm.h>
+#include <pcl/registration/warp_point_rigid_3d.h>
 
 #include <pcl/point_cloud.h>
 //#include <pcl/>
@@ -1220,8 +1223,8 @@ public:
       float pointsDelta = comparePointIndices(l1.points, l2.points);
 
 //       ROS_INFO_STREAM("COMPARING LINES");
-       printLineInfo(l1);
-       printLineInfo(l2);
+//       printLineInfo(l1);
+//       printLineInfo(l2);
 //       ROS_INFO_STREAM("COMPARING LINES DELTA - Centroid: " << centroidDelta << " Points: " << pointsDelta << " Coefficients: " << coefficientDelta << " Segment: " << segmentDelta);
 
        totalDelta = centroidDelta + coefficientDelta + segmentDelta + pointsDelta;
@@ -1321,6 +1324,53 @@ public:
         return true;
       }
 
+      ///////////////// BEGIN ICP2D /////////////////
+
+      bool ICP2D(pcl::PointCloud<pcl::PointXYZRGB>::Ptr inputCloudPtr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr targetPCLPtr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr outCloudPtr,pcl::IterativeClosestPointNonLinear<pcl::PointXYZRGB, pcl::PointXYZRGB>::Ptr registrationPtr) {
+
+        // ICP object.
+        // pcl::IterativeClosestPoint<pcl::PointXYZRGB, pcl::PointXYZRGB> registration;
+        Eigen::Matrix4f t (Eigen::Matrix4f::Identity ());
+
+        pcl::registration::WarpPointRigid3D<pcl::PointXYZRGB, pcl::PointXYZRGB>::Ptr warp_fcn
+              (new pcl::registration::WarpPointRigid3D<pcl::PointXYZRGB, pcl::PointXYZRGB>);
+
+        // Create a TransformationEstimationLM object, and set the warp to it
+        pcl::registration::TransformationEstimationLM<pcl::PointXYZRGB, pcl::PointXYZRGB>::Ptr te (new pcl::registration::TransformationEstimationLM<pcl::PointXYZRGB, pcl::PointXYZRGB>);
+        te->setWarpFunction (warp_fcn);
+
+        // Pass the TransformationEstimation objec to the ICP algorithm
+        registrationPtr->setTransformationEstimation (te);
+
+//        registrationPtr->setMaximumIterations (50);
+//        registrationPtr->setMaxCorrespondenceDistance (0.05);
+//        registrationPtr->setRANSACOutlierRejectionThreshold (0.05);
+
+        ROS_INFO_STREAM("ICP2D--ASSIGNING CLOUD POINTERS");
+        registrationPtr->setInputSource(inputCloudPtr);
+        registrationPtr->setInputTarget(targetPCLPtr);
+        ROS_INFO_STREAM("ICP2D--ALIGNING CLOUDS");
+        registrationPtr->align(*outCloudPtr);
+        ROS_INFO_STREAM("ICP2D--CHECKING CONVERGENCE");
+        if (registrationPtr->hasConverged())
+        {
+          t *= registrationPtr->getFinalTransformation ();
+          std::cout << "ICP2D converged." << std::endl
+                << "The score is " << registrationPtr->getFitnessScore() << std::endl;
+          std::cout << "Transformation matrix:" << std::endl;
+          std::cout << registrationPtr->getFinalTransformation() << std::endl;
+          return true;
+        }
+        else
+        {
+          std::cout << "ICP did not converge." << std::endl;
+          return false;
+        }
+
+      }
+      ///////////////// END ICP2D /////////////////
+
+
       ///////////////// BEGIN ICP /////////////////
 
       bool ICP(pcl::PointCloud<pcl::PointXYZRGB>::Ptr inputCloudPtr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr targetPCLPtr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr outCloudPtr,pcl::IterativeClosestPoint<pcl::PointXYZRGB, pcl::PointXYZRGB>::Ptr registrationPtr) {
@@ -1359,16 +1409,24 @@ public:
           typename pcl::PointCloud<PointT>::Ptr outCloudPCLPtr(new pcl::PointCloud<PointT>());
           pcl::fromROSMsg(clusterPtr->cloud, *inCloudPCLPtr);
           ROS_INFO_STREAM("ICP-CLUS--CREATING ICP REGISTRATION OBJECT ");
+
           // ICP object.
           pcl::IterativeClosestPoint<pcl::PointXYZRGB, pcl::PointXYZRGB>::Ptr registrationPtr (new pcl::IterativeClosestPoint<pcl::PointXYZRGB, pcl::PointXYZRGB>());
-          ROS_INFO_STREAM("ICP-CLUS--PERFORMING ICP ON CLUSTER ID " << clusterPtr->clusterID.data);
           bool success = ICP(inCloudPCLPtr, targetPCLPtr, outCloudPCLPtr, registrationPtr);
+
+//          pcl::IterativeClosestPointNonLinear<pcl::PointXYZRGB, pcl::PointXYZRGB>::Ptr registrationPtr (new pcl::IterativeClosestPointNonLinear<pcl::PointXYZRGB, pcl::PointXYZRGB>());
+//          bool success = ICP2D(inCloudPCLPtr, targetPCLPtr, outCloudPCLPtr, registrationPtr);
+
+          ROS_INFO_STREAM("ICP-CLUS--PERFORMING ICP ON CLUSTER ID " << clusterPtr->clusterID.data);
+
           if(success){
             ROS_INFO_STREAM("ICP-CLUS-- SUCCESS ICP ON CLUSTER ID " << clusterPtr->clusterID.data);
             sensor_msgs::PointCloud2 ICPCombinedCloud;
             pcl::toROSMsg(*outCloudPCLPtr,ICPCombinedCloud);
             clusterPtr->icpCombinedCloud = ICPCombinedCloud;
+            ROS_INFO_STREAM("ICP-CLUS-- GETTING FITNESS SCORE ICP ON CLUSTER ID " << clusterPtr->clusterID.data);
             clusterPtr->icp.score = registrationPtr->getFitnessScore();
+            ROS_INFO_STREAM("ICP-CLUS-- GETTING TRANSFORMATION ICP ON CLUSTER ID " << clusterPtr->clusterID.data);
             Eigen::Matrix4f transformation = registrationPtr->final_transformation_;
 
             clusterPtr->icp.poseStamped.pose = Matrix4TFtoPose(transformation);
