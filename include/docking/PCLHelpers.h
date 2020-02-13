@@ -25,6 +25,12 @@
 #include <std_msgs/String.h>
 #include <visualization_msgs/Marker.h>
 
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2_eigen/tf2_eigen.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/TransformStamped.h>
+
 #include <pcl/cloud_iterator.h>
 #include <pcl/common/common.h>
 #include <pcl/common/transforms.h>
@@ -52,6 +58,48 @@
 #include <tf/tf.h>
 #include <tf_conversions/tf_eigen.h>
 
+//void printTF2Matrix(tf2::Matrix3x3 tf2m){
+//  tf2::Vector3 r0 = tf2m.getRow(0);
+//  tf2::Vector3 r1 = tf2m.getRow(1);
+//  tf2::Vector3 r2 = tf2m.getRow(2);
+//  std::cout << r0.x() << " " << r0.y() << " " << r0.z() << std::endl;
+//  std::cout << r1.x() << " " << r1.y() << " " << r1.z() << std::endl;
+//  std::cout << r2.x() << " " << r2.y() << " " << r2.z() << std::endl;
+//}
+
+void printTF2Matrix(tf2::Matrix3x3 tf2m)
+{
+  tf2::Vector3 r0 = tf2m.getRow(0);
+  tf2::Vector3 r1 = tf2m.getRow(1);
+  tf2::Vector3 r2 = tf2m.getRow(2);
+  printf("Rotation matrix :\n");
+  printf("    | %6.3f %6.3f %6.3f | \n", r0.x(), r0.y(), r0.z());
+  printf("R = | %6.3f %6.3f %6.3f | \n", r1.x(), r1.y(), r1.z());
+  printf("    | %6.3f %6.3f %6.3f | \n", r2.x(), r2.y(), r2.z());
+//  printf("Translation vector :\n");
+//  printf("t = < %6.3f, %6.3f, %6.3f >\n\n", matrix(0, 3), matrix(1, 3), matrix(2, 3));
+}
+
+void print4x4Matrix(const Eigen::Matrix4d &matrix)
+{
+  printf("Rotation matrix :\n");
+  printf("    | %6.3f %6.3f %6.3f | \n", matrix(0, 0), matrix(0, 1), matrix(0, 2));
+  printf("R = | %6.3f %6.3f %6.3f | \n", matrix(1, 0), matrix(1, 1), matrix(1, 2));
+  printf("    | %6.3f %6.3f %6.3f | \n", matrix(2, 0), matrix(2, 1), matrix(2, 2));
+  printf("Translation vector :\n");
+  printf("t = < %6.3f, %6.3f, %6.3f >\n\n", matrix(0, 3), matrix(1, 3), matrix(2, 3));
+}
+
+void printTF2Quarternion(tf2::Quaternion tf2q)
+{
+  printf("QUARTERNION :\n");
+  printf("    | %6.3f | \n", tf2q.x());
+  printf("Q = | %6.3f | \n", tf2q.y());
+  printf("    | %6.3f | \n", tf2q.z());
+  printf("    | %6.3f | \n", tf2q.w());
+}
+
+
 Eigen::Vector4f toEigen(pcl::ModelCoefficients pmc){
   pcl::ModelCoefficients::Ptr pmcPtr (new pcl::ModelCoefficients(pmc));
   pmcPtr->values.resize (4);
@@ -78,9 +126,7 @@ geometry_msgs::Pose Matrix4TFtoPose(Eigen::Matrix4f m4f){
                 rot3x3(0,1),rot3x3(1,1),rot3x3(2,1),
                 rot3x3(0,2),rot3x3(1,2),rot3x3(2,2)) ;
 
-
 //  tf::matrixEigenToTF(eq,tfm3);
-
 
 //  tf::transformEigenToTF(rot3x3,tf);
 
@@ -131,6 +177,78 @@ geometry_msgs::Pose Matrix4TFtoPose(Eigen::Matrix4f m4f){
 
   return pose;
 }
+
+
+geometry_msgs::TransformStamped Matrix4TFtoTransform(Eigen::Matrix4f m4f){
+
+  Eigen::Matrix4d m4d = m4f.cast <double> ();
+  geometry_msgs::TransformStamped tfs;
+
+//  ROS_INFO_STREAM("Matrix4TFtoPose-- Extracting Rotation Matrix in Eigen::Matrix3d ");
+  ROS_INFO_STREAM("Matrix4TFtoPose-- Copying Rotation Matrix into tf::Matrix3x3");
+  tf2::Matrix3x3 tf2m3(m4d(0,0),m4d(1,0),m4d(2,0),
+                     m4d(0,1),m4d(1,1),m4d(2,1),
+                     m4d(0,2),m4d(1,2),m4d(2,2)) ;
+  ROS_INFO_STREAM("Matrix4TFtoPose-- tf::Matrix3x3 Rotation Matrix " );
+  printTF2Matrix(tf2m3);
+
+
+  tf2::Matrix3x3 tf2m3_inv = tf2m3.inverse();
+  ROS_INFO_STREAM("Matrix4TFtoPose-- tf::Matrix3x3 Rotation Matrix INVERTED ");
+  printTF2Matrix(tf2m3_inv);
+
+  double roll, pitch, yaw;
+  tf2m3.getRPY(roll,pitch,yaw);
+  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- TF2::Matrix3 getRPY() roll " << roll << " pitch " << pitch << " yaw " << yaw);
+
+  tf2m3_inv.getRPY(roll,pitch,yaw);
+  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- INVERTED TF2::Matrix3 getRPY() roll " << roll << " pitch " << pitch << " yaw " << yaw);
+
+//  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- CREATING QUARTERNION ");
+  tf2::Quaternion tf2q;
+//  printTF2Quarternion(tf2q);
+//  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- QUARTERNION.GETROTATION() ");
+  tf2m3.getRotation(tf2q);
+//  printTF2Quarternion(tf2q);
+
+//  tf2m3_inv.getRotation(tf2q);
+//  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- INVERTED TF2::Matrix3 getRotation()  Quarternion Z: " << tf2q.z() << " W: " << tf2q.w());
+
+//  double yaw_rad = tf2Atan2(m4d(0,0),m4d(0,1));
+//  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- YAW in DEGREES" << yaw_deg);
+//  double yaw_rad = tf2Radians(yaw_deg);
+//  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- MANUALLY CALCULATED YAW in RADIANS " << yaw_rad);
+//  tf2q.setRPY(0,0,yaw_rad);
+
+//  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- NON-NORMALIZED QUARTERNION ");
+//  printTF2Quarternion(tf2q);
+  tf2q.normalize();
+//  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- QUARTERNION NORMALIZED ");
+//  printTF2Quarternion(tf2q);
+
+
+//  ROS_INFO_STREAM("Matrix4TFtoPose-- Extracting Translation Vector into tf::Vector3");
+  tf2::Vector3 tfv3(m4d(0,3),m4d(1,3),m4d(2,3));
+
+//  tfs.header.stamp = ros::Time::now();
+//  tfs.header.frame_id = "world";
+//  tfs.child_frame_id = turtle_name;
+
+  tfs.transform.translation.x = -(tfv3.x());
+  tfs.transform.translation.y = tfv3.y();
+  tfs.transform.translation.z = tfv3.z();
+
+  tfs.transform.rotation.x = tf2q.x();
+  tfs.transform.rotation.y = tf2q.y();
+  tfs.transform.rotation.z = tf2q.z();
+  tfs.transform.rotation.w = tf2q.w();
+
+  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- RETURNING TRANSFORM ");
+  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- " << tfs);
+
+  return tfs;
+}
+
 
 
 double getAngle(docking::Line l1, docking::Line l2){
