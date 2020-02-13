@@ -1,0 +1,7 @@
+<launch>
+<node pkg="tf2_ros" type="static_transform_publisher" name="world_tf" args="0 0 0 0 0 0 1 world odom" />
+
+<node pkg="tf2_ros" type="static_transform_publisher" name="mappy_truth_tf" args="0 0 0 0 0 0 1 world base_link" />
+
+<node pkg="tf2_ros" type="static_transform_publisher" name="dock_truth_tf" args="1 0 0 0 0 -0.6442 0.7684 world dock_truth" />
+</launch>
