@@ -2,6 +2,7 @@
 #ifndef SEGMENTLINENODE_H_
 #define SEGMENTLINENODE_H_
 
+#include <docking/Headers.h>
 #include <docking/Helpers.h>
 #include <docking/PCLHelpers.h>
 // Dynamic reconfigure includes.
@@ -16,6 +17,8 @@
 #include <docking/MinMaxPoint.h>
 #include <docking/SegmentLineConfig.h>
 #include <docking/ICP.h>
+
+#include <docking/Clustering.h>
 
 #include <jsk_recognition_msgs/BoundingBox.h>
 #include <jsk_recognition_msgs/PolygonArray.h>
@@ -67,7 +70,7 @@
 
 //namespace docking {
 
-template <typename PointT> class SegmentLineNode {
+class SegmentLineNode {
 ///////////////// BEGIN VARIABLES /////////////////
 public:
   SegmentLineNode(ros::NodeHandle nh) : nh_(nh) {
@@ -100,9 +103,9 @@ public:
   dynamic_reconfigure::Server<docking::SegmentLineConfig> dr_srv_;
 
   //! Input PCL Cloud
-  typename pcl::PointCloud<PointT> scanCloudPCL_;
+  pcl::PointCloud<pcl::PointXYZRGB> scanCloudPCL_;
   //! Input PCL Cloud Pointer
-  typename pcl::PointCloud<PointT>::Ptr scanCloudPCLPtr_(typename pcl::PointCloud<PointT> scanCloudPCL_);
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr scanCloudPCLPtr_(pcl::PointCloud<pcl::PointXYZRGB> scanCloudPCL_);
   //! Target Dock PCL Cloud Pointer
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr dockTargetPCLPtr_;
 
@@ -387,10 +390,10 @@ public:
     /*
      * CONVERT POINTCLOUD ROS->PCL
      */
-    pcl::PointCloud<PointT> cloudPCL;
+    pcl::PointCloud<pcl::PointXYZRGB> cloudPCL;
     pcl::fromROSMsg(*msg, cloudPCL);
     pcl::fromROSMsg(*msg, scanCloudPCL_);
-    typename pcl::PointCloud<PointT>::Ptr cloudPCLPtr(new pcl::PointCloud<PointT>(cloudPCL));
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudPCLPtr(new pcl::PointCloud<pcl::PointXYZRGB>(cloudPCL));
 
     /* ========================================
      * CLUSTERING
@@ -399,7 +402,9 @@ public:
 
 //    ROS_INFO_STREAM("CLOUD CALLBACK: clustersPtr_.header " << clustersPtr_->header);
 
-    this->ClusterPoints(cloudPCLPtr, clustersPtr_, EC_cluster_tolerance_, EC_min_size_, EC_max_size_);
+    Clustering clustering;
+    clustering.setHeader(header_);
+    clustering.ClusterPoints(cloudPCLPtr, clustersPtr_, EC_cluster_tolerance_, EC_min_size_, EC_max_size_);
 
 //    ROS_INFO_STREAM("CLOUD CALLBACK: CLUSTERING RETURNED " << clustersPtr_->clusters.size() << " CLUSTERS");
 
@@ -444,7 +449,7 @@ public:
 
       dock_marker_pub_.publish(dockCluster.bbox.marker);
       bbox_pub_.publish(dockCluster.bbox);
-      jsk_bbox_pub_.publish(bboxToJSK(dockCluster.bbox));
+      jsk_bbox_pub_.publish(clustering.bboxToJSK(dockCluster.bbox));
     }
 
 //    if(clustersPtr_->clusters.size()>0)
@@ -499,16 +504,16 @@ public:
   /// \param distanceThreshold
   /// \return lines
   ///
-  docking::LineArray getRansacLines(typename pcl::PointCloud<PointT>::Ptr inputCloudPtr)
-  //     std::vector<typename pcl::PointCloud<PointT>::Ptr> RansacLine(typename
-  //     pcl::PointCloud<PointT>::Ptr inputCloudPtr, int maxIterations, float
+  docking::LineArray getRansacLines(pcl::PointCloud<pcl::PointXYZRGB>::Ptr inputCloudPtr)
+  //     std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> RansacLine(typename
+  //     pcl::PointCloud<pcl::PointXYZRGB>::Ptr inputCloudPtr, int maxIterations, float
   //     distanceThreshold) std::pair<pcl::ModelCoefficients::Ptr,
   //     pcl::PointIndices::Ptr> RansacLine(typename
-  //     pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float
+  //     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, int maxIterations, float
   //     distanceThreshold)
   {
-    typename pcl::PointCloud<PointT> copyInputCloud = *inputCloudPtr;
-    typename pcl::PointCloud<PointT>::Ptr copyInputCloudPtr(new pcl::PointCloud<PointT>(copyInputCloud));
+    pcl::PointCloud<pcl::PointXYZRGB> copyInputCloud = *inputCloudPtr;
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr copyInputCloudPtr(new pcl::PointCloud<pcl::PointXYZRGB>(copyInputCloud));
     copyInputCloudPtr->header.seq = inputCloudPtr->header.seq;
     //std::cout << std::endl;
 //    ROS_INFO_STREAM("RANSAC Called on Cloud ID " << copyInputCloudPtr->header.seq);
@@ -516,23 +521,23 @@ public:
     pcl::PointIndices::Ptr inliersPtr(new pcl::PointIndices());
 
     // Create the segmentation object
-    pcl::SACSegmentation<PointT> seg;
+    pcl::SACSegmentation<pcl::PointXYZRGB> seg;
     seg.setOptimizeCoefficients(true);
     seg.setModelType(pcl::SACMODEL_LINE);
     seg.setMethodType(pcl::SAC_RANSAC);
     seg.setMaxIterations(RS_max_iter_);
     seg.setDistanceThreshold(RS_dist_thresh_);
 
-    std::vector<typename pcl::PointCloud<PointT>::Ptr> lineVectorPCL;
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> lineVectorPCL;
 
     docking::LineArray lines;
 
-    std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> segResult;
+    std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> segResult;
 
-    typename pcl::PointCloud<PointT>::Ptr inCloudPtr, outCloudPtr;
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr inCloudPtr, outCloudPtr;
     inCloudPtr = copyInputCloudPtr;
 
-    pcl::PointCloud<PointT> combinedLinesCloud;
+    pcl::PointCloud<pcl::PointXYZRGB> combinedLinesCloud;
 
     while (true) {
 
@@ -554,7 +559,7 @@ public:
       segResult = SeparateClouds(inliersPtr, inCloudPtr);
 
       // Create new cloud for detected line
-      typename pcl::PointCloud<PointT>::Ptr lineCloudPCLPtr(new pcl::PointCloud<PointT>);
+      pcl::PointCloud<pcl::PointXYZRGB>::Ptr lineCloudPCLPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
       *lineCloudPCLPtr = *segResult.first;
       lineCloudPCLPtr->width = inliersPtr->indices.size();
       lineCloudPCLPtr->height = 1;
@@ -624,7 +629,7 @@ public:
     //        sensor_msgs::PointCloud2(lines.combinedCloud));
 
     lines.header = lines.combinedCloud.header = header_;
-    typename pcl::PointCloud<PointT> linesCombinedPCL;
+    pcl::PointCloud<pcl::PointXYZRGB> linesCombinedPCL;
     int lineID = 0;
 
     // Iterate through clusters
@@ -633,7 +638,7 @@ public:
     {
 
 //        ROS_INFO_STREAM("RAN-CLUS--RANSACING THROUGH CLUSTER ID " << cit->clusterID.data);
-        typename pcl::PointCloud<PointT>::Ptr cloudPCLPtr(new pcl::PointCloud<PointT>());
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudPCLPtr(new pcl::PointCloud<pcl::PointXYZRGB>());
         pcl::fromROSMsg(cit->cloud, *cloudPCLPtr);
         cloudPCLPtr->header.seq = cit->clusterID.data;
 
@@ -659,7 +664,7 @@ public:
         }
 
 //        ROS_INFO_STREAM("RAN-CLUS--COMBINING CLOUDS OF DETECTED LINES FROM CLUSTER ID " << cit->clusterID.data);
-        typename pcl::PointCloud<PointT> currentLinesCloudPCL;
+        pcl::PointCloud<pcl::PointXYZRGB> currentLinesCloudPCL;
         pcl::fromROSMsg(currentLines.combinedCloud, currentLinesCloudPCL);
         linesCombinedPCL = linesCombinedPCL + currentLinesCloudPCL;
 
@@ -675,268 +680,13 @@ public:
   }
   ///////////////// END RANSAC LINE ON CLUSTERS /////////////////
 
-  ///////////////// BEGIN CLUSTER POINTS /////////////////
-  /// \brief ClusterPoints
-  /// \param cloud
-  /// \param clusterTolerance
-  /// \param minSize
-  /// \param maxSize
-  /// \return
-  ///
-  void ClusterPoints(typename pcl::PointCloud<PointT>::Ptr inCloud, docking::ClusterArray::Ptr clustersPtr, double clusterTolerance, int minSize, int maxSize) {
-    //std::cout << std::endl;
-    // ROS_INFO_STREAM();
-//    ROS_INFO_STREAM("CLUSTERING Called: ");
-//    ROS_INFO_STREAM("CLUSTERING: clustersPtr.header " << clustersPtr->header);
-    //        ROS_INFO_STREAM("");
-//    ROS_INFO_STREAM("Cluster tolerance: " << clusterTolerance << " Min Points: " << minSize << " Max Points: " << maxSize);
-
-    docking::ClusterArray clusters;
-
-    pcl::PointCloud<PointT> combinedClustersCloud;
-    typename pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<PointT>);
-    tree->setInputCloud(inCloud);
-    std::vector<pcl::PointIndices> cluster_indices;
-    pcl::EuclideanClusterExtraction<PointT> ec;
-    ec.setClusterTolerance(clusterTolerance);
-    ec.setMinClusterSize(minSize);
-    ec.setMaxClusterSize(maxSize);
-    ec.setSearchMethod(tree);
-    ec.setInputCloud(inCloud);
-    ec.extract(cluster_indices);
-
-    //        std::cout << "CLUSTERING: " << cluster_indices.size() << "
-    //        clusters found" << std::endl;
-//    ROS_INFO_STREAM("CLUSTERING: " << cluster_indices.size()<< " clusters found");
-
-    std::vector<typename pcl::PointCloud<PointT>::Ptr> clustersPCLVector;
-    int i = 0;
-    for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); ++it, ++i) {
-      typename pcl::PointCloud<PointT>::Ptr cloudClusterPtr(new pcl::PointCloud<PointT>);
-      for (std::vector<int>::const_iterator pit = it->indices.begin(); pit != it->indices.end(); pit++) {
-        cloudClusterPtr->points.push_back(inCloud->points[*pit]);
-      }
-
-      cloudClusterPtr->width = cloudClusterPtr->points.size();
-      cloudClusterPtr->height = 1;
-      cloudClusterPtr->is_dense = true;
-
-//      ROS_INFO_STREAM("CLUSTERING: Cluster " << i << " has "<< cloudClusterPtr->points.size() << " points");
-      // Add current cluster to list of clusters
-      // ROS_INFO_STREAM("COLORING CLUSTER");
-      ColorCloud(cloudClusterPtr, i);
-      // ROS_INFO_STREAM("COMBINING CLUSTER");
-      combinedClustersCloud += *cloudClusterPtr;
-      // ROS_INFO_STREAM("ADDING CLUSTER TO VECTOR");
-      clustersPCLVector.push_back(cloudClusterPtr);
-      pcl::PointIndicesPtr currentPointIndicesPtr(new pcl::PointIndices(*it));
-      // ROS_INFO_STREAM("ROSIFYING CLUSTER");
-      docking::Cluster clusterMsg = rosifyCluster(cloudClusterPtr, currentPointIndicesPtr);
-      clusterMsg.clusterID.data = i;
-      clusterMsg.header = clusterMsg.cloud.header = clusterMsg.points.header = clustersPtr->header;
-
-//      clusterMsg.bbox = getBoundingBoxClusterOriented(cloudClusterPtr);
-//      clusterMsg.bbox.marker = markCluster(clusterMsg);
-//      clusterMsg.jbbox = bboxToJSK(clusterMsg.bbox);
-
-      clustersPtr->clusters.push_back(clusterMsg);
-    }
-//     ROS_INFO_STREAM("CLUSTERING: CONVERTING COMBINED CLUSTER TO ROS MSG");
-    pcl::toROSMsg(combinedClustersCloud, clustersPtr->combinedCloud);
-    clustersPtr->combinedCloud.header = clustersPtr->header;
-//    ROS_INFO_STREAM("CLUSTERING: FOUND " << clustersPtr->clusters.size() << " CLUSTERS");
-  }
-  ///////////////// END CLUSTER POINTS /////////////////
-
-  ///////////////// BEGIN BOUNDING BOX CLUSTER /////////////////
-  /// \brief getBoundingBoxCluster
-  /// \param cluster
-  /// \return bbox
-  ///
-  docking::BoundingBox getBoundingBoxCluster(docking::Cluster cluster) {
-    docking::BoundingBox bbox;
-
-    typename pcl::PointCloud<PointT> cloud;
-    pcl::fromROSMsg(cluster.cloud, cloud);
-    typename pcl::PointCloud<PointT>::Ptr cloudPtr(new pcl::PointCloud<PointT>(cloud));
-
-    // Get Centroid of cluster
-    //        bbox.pose.position = getCentroid(cloudPtr);
-
-    Eigen::Vector4f minVec4f;
-    Eigen::Vector4f maxVec4f;
-    pcl::getMinMax3D(cloud, minVec4f, maxVec4f);
-
-    geometry_msgs::Point point;
-    // Get Min Point
-    point.x = double(minVec4f[0]);
-    point.y = double(minVec4f[1]);
-    point.z = double(minVec4f[2]);
-    bbox.min = point;
-    // Get Max Point
-    point.x = double(maxVec4f[0]);
-    point.y = double(maxVec4f[1]);
-    point.z = double(maxVec4f[2]);
-    bbox.max = point;
-
-    bbox.dimensions.x = bbox.max.x - bbox.min.x;
-    bbox.dimensions.y = bbox.max.y - bbox.min.y;
-    bbox.dimensions.z = bbox.max.z - bbox.min.z;
-
-    bbox.area = (bbox.max.x - bbox.min.x) * (bbox.max.y - bbox.min.y);
-    bbox.volume = (bbox.area) * (bbox.max.z - bbox.min.z);
-
-    bbox.header = header_;
-
-    return bbox;
-  }
-  ///////////////// END BOUNDING BOX CLUSTER /////////////////
-
-  ///////////////// BEGIN BOUNDING BOX CLUSTER ORIENTED /////////////////
-  /// \brief getBoundingBoxCluster
-  /// \param cluster
-  /// \return bbox
-  ///
-  docking::BoundingBox getBoundingBoxClusterOriented(
-      typename pcl::PointCloud<PointT>::Ptr origCloudPtr) {
-    //        pcl::PointXYZ minPoint, maxPoint;
-    //        pcl::getMinMax3D(*origCloudPtr, minPoint, maxPoint);
-
-    // Compute principal directions
-    Eigen::Vector4f pcaCentroid;
-    pcl::compute3DCentroid(*origCloudPtr, pcaCentroid);
-    Eigen::Matrix3f covariance;
-
-    computeCovarianceMatrixNormalized(*origCloudPtr, pcaCentroid, covariance);
-    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> eigen_solver(
-        covariance, Eigen::ComputeEigenvectors);
-    Eigen::Matrix3f eigenVectorsPCA = eigen_solver.eigenvectors();
-
-    /*This line is necessary for proper orientation in some cases.
-    The numbers come out the same without it, but the signs are different and
-    the box doesn't get correctly oriented in some cases.*/
-    eigenVectorsPCA.col(2) =
-        eigenVectorsPCA.col(0).cross(eigenVectorsPCA.col(1));
-
-    // Note that getting the eigenvectors can also be obtained via the
-    // PCL PCA interface with something like:
-    /*
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloudPCAprojectionPtr (new
-    pcl::PointCloud<pcl::PointXYZ>); pcl::PCA<pcl::PointXYZ> pca;
-    pca.setInputCloud(origCloudPtr);
-    pca.project(*origCloudPtr, *cloudPCAprojectionPtr);
-    std::cerr << std::endl << "EigenVectors: " << pca.getEigenVectors() <<
-    std::endl; std::cerr << std::endl << "EigenValues: " << pca.getEigenValues()
-    << std::endl;
-    // In this case, pca.getEigenVectors() gives similar eigenVectors to
-    eigenVectorsPCA.
-    */
-
-    // Transform the original cloud to the origin where the principal components
-    // correspond to the axes.
-    Eigen::Matrix4f projectionTransform(Eigen::Matrix4f::Identity());
-    projectionTransform.block<3, 3>(0, 0) = eigenVectorsPCA.transpose();
-    projectionTransform.block<3, 1>(0, 3) = -1.f * (projectionTransform.block<3, 3>(0, 0) * pcaCentroid.head<3>());
-    typename pcl::PointCloud<PointT>::Ptr cloudPointsProjectedPtr(
-        new pcl::PointCloud<PointT>);
-    pcl::transformPointCloud(*origCloudPtr, *cloudPointsProjectedPtr,
-                             projectionTransform);
-    // Get the minimum and maximum points of the transformed cloud.
-    typename pcl::PointCloud<pcl::PointXYZ>::Ptr cloudPointsProjectedXYZPtr(
-        new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::copyPointCloud(*cloudPointsProjectedPtr, *cloudPointsProjectedXYZPtr);
-
-//    printDebugCloud(cloudPointsProjectedXYZPtr);
-
-    //        pcl::PointXYZ minPointProjected, maxPointProjected;
-    pcl::PointXYZRGB minPoint, maxPoint;
-    pcl::getMinMax3D(*cloudPointsProjectedPtr, minPoint, maxPoint);
-    const Eigen::Vector3f meanDiagonal =
-        0.5f * (maxPoint.getVector3fMap() + minPoint.getVector3fMap());
-
-    // Final transform
-    const Eigen::Quaternionf bboxQuaternion(eigenVectorsPCA);
-    const Eigen::Vector3f bboxPosition = eigenVectorsPCA * meanDiagonal + pcaCentroid.head<3>();
-
-    // Convert to ROS BoundingBox Msg
-    docking::BoundingBox bboxMsg;
-
-    bboxMsg.pose.position.x = double(bboxPosition[0]);
-    bboxMsg.pose.position.y = double(bboxPosition[1]);
-    bboxMsg.pose.position.z = double(bboxPosition[2]);
-
-    bboxMsg.pose.orientation.x = double(bboxQuaternion.x());
-    bboxMsg.pose.orientation.y = double(bboxQuaternion.y());
-    bboxMsg.pose.orientation.z = double(bboxQuaternion.z());
-    bboxMsg.pose.orientation.w = double(bboxQuaternion.w());
-
-    geometry_msgs::Point point;
-//    ROS_INFO_STREAM("PCL minMaxPoint after getVector3fMap");
-//    ROS_INFO_STREAM("PCL minPoint: " << minPoint);
-//    ROS_INFO_STREAM("PCL maxPoint: " << maxPoint);
-    // Get Min Point
-    point.x = double(minPoint.x);
-    point.y = double(minPoint.y);
-    point.z = double(minPoint.z);
-    bboxMsg.min = point;
-    // Get Max Point
-    point.x = double(maxPoint.x);
-    point.y = double(maxPoint.y);
-    point.z = double(maxPoint.z);
-    bboxMsg.max = point;
-
-    //        @TODO: Points still in dock frame
-    //              Transform min and max points back into laser frame
-    //        bboxMsg.dimensions.x = bboxMsg.max.x - bboxMsg.min.x ;
-    bboxMsg.dimensions.x = 0.1; //
-    bboxMsg.dimensions.y = bboxMsg.max.y - bboxMsg.min.y;
-    bboxMsg.dimensions.z = bboxMsg.max.z - bboxMsg.min.z;
-
-    bboxMsg.area = bboxMsg.dimensions.x * bboxMsg.dimensions.y;
-    bboxMsg.volume = (bboxMsg.area) * bboxMsg.dimensions.z;
-
-//    ROS_INFO_STREAM("bboxMsg.min: " << bboxMsg.min);
-//    ROS_INFO_STREAM("bboxMsg.max: " << bboxMsg.max);
-//    ROS_INFO_STREAM("bboxMsg.dimensions: " << bboxMsg.dimensions);
-
-    bboxMsg.header = header_;
-
-    return bboxMsg;
-
-    //        visu->addCube(bboxTransform, bboxQuaternion, maxPoint.x -
-    //        minPoint.x, maxPoint.y - minPoint.y, maxPoint.z - minPoint.z,
-    //        "bbox", mesh_vp_3); addCube (const Eigen::Vector3f &translation,
-    //        const Eigen::Quaternionf &rotation,double width, double height,
-    //        double depth,const std::string &id = "cube",int viewport = 0);
-  }
-  ///////////////// END BOUNDING BOX CLUSTER ORIENTED  /////////////////
-
-  ///////////////// BEGIN BBOX DOCKING TO JSK /////////////////
-  /// \brief getBoundingBoxCluster
-  /// \param cluster
-  /// \return bbox
-  ///
-  jsk_recognition_msgs::BoundingBox bboxToJSK(docking::BoundingBox dbbox) {
-    jsk_recognition_msgs::BoundingBox jbbox;
-    jbbox.header = header_;
-    jbbox.pose = dbbox.pose;
-    jbbox.dimensions = dbbox.dimensions;
-    //        ROS_INFO_STREAM("dbbox.dimensions: " << dbbox.dimensions);
-    //        ROS_INFO_STREAM("jbbox.dimensions: " << jbbox.dimensions);
-    jbbox.value = 0.5;
-    jbbox.label = 1;
-
-    return jbbox;
-  }
-  ///////////////// END BBOX DOCKING TO JSK /////////////////
-
 
   ///////////////// BEGIN LINE TO SEGMENT /////////////////
   /// \brief getSegment
   /// \param inCloudPtr
   /// \return Segment
   ///
-  jsk_recognition_msgs::Segment getSegment(typename pcl::PointCloud<PointT>::Ptr inCloudPtr){
+  jsk_recognition_msgs::Segment getSegment(pcl::PointCloud<pcl::PointXYZRGB>::Ptr inCloudPtr){
     docking::MinMaxPoint mmp = getMinMaxPointMsg(inCloudPtr);
     jsk_recognition_msgs::Segment segment = minMaxToSegment(mmp);
     return segment;
@@ -949,7 +699,7 @@ public:
   /// \param inCloudPtr
   /// \return centroid
   ///
-  geometry_msgs::Pose getCentroid(typename pcl::PointCloud<PointT>::Ptr inCloudPtr) {
+  geometry_msgs::Pose getCentroid(pcl::PointCloud<pcl::PointXYZRGB>::Ptr inCloudPtr) {
     Eigen::Vector4f centroidVec4f;
     pcl::compute3DCentroid(*inCloudPtr, centroidVec4f);
     geometry_msgs::Pose centroid;
@@ -969,7 +719,7 @@ public:
   ///////////////// END CENTROID /////////////////
 
   ///////////////// BEGIN ROSIFY LINE /////////////////
-  docking::Line rosifyLine(typename pcl::PointCloud<PointT>::Ptr &cloudPCLPtr,
+  docking::Line rosifyLine(pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloudPCLPtr,
                            pcl::PointIndices::Ptr &indicesPCLPtr,
                            pcl::ModelCoefficients::Ptr &coefficientsPCLPtr) {
     sensor_msgs::PointCloud2Ptr cloudMsgPtr(new sensor_msgs::PointCloud2);
@@ -1005,43 +755,8 @@ public:
   }
   ///////////////// END ROSIFY LINE /////////////////
 
-  ///////////////// BEGIN ROSIFY CLUSTER /////////////////
-  docking::Cluster rosifyCluster(typename pcl::PointCloud<PointT>::Ptr &cloudPCLPtr,
-                                 pcl::PointIndices::Ptr &indicesPCLPtr) {
-    docking::Cluster clusterMsg;
-    sensor_msgs::PointCloud2Ptr cloudMsgPtr(new sensor_msgs::PointCloud2);
-    pcl_msgs::PointIndicesPtr indicesMsgPtr(new pcl_msgs::PointIndices);
-
-    // ROS_INFO_STREAM(CONVERTING CURRENT CLUSTER TO ROS MSG");
-    pcl::toROSMsg(*cloudPCLPtr, *cloudMsgPtr);
-    clusterMsg.cloud = *cloudMsgPtr;
-    // ROS_INFO_STREAM(CONVERTING INDICES TO ROS MSG");
-    clusterMsg.points.indices = indicesPCLPtr->indices;
-
-    clusterMsg.bbox = getBoundingBoxClusterOriented(cloudPCLPtr);
-    clusterMsg.bbox.marker = markCluster(clusterMsg);
-    clusterMsg.jbbox = bboxToJSK(clusterMsg.bbox);
-
-    return clusterMsg;
-  }
-  ///////////////// END ROSIFY CLUSTER /////////////////
-
-  ///////////////// BEGIN ROSIFY CLUSTER /////////////////
-  docking::Cluster rosifyCluster(typename pcl::PointCloud<PointT>::Ptr &cloudPCLPtr) {
-    sensor_msgs::PointCloud2Ptr cloudMsgPtr(new sensor_msgs::PointCloud2);
-
-    pcl::toROSMsg(*cloudPCLPtr, *cloudMsgPtr);
-    //      std::cout << "CONVERTING CURRENT CLUSTER TO ROS MSG\n";
-    // ROS_INFO_STREAM();
-    docking::Cluster cluster;
-    cluster.cloud = *cloudMsgPtr;
-
-    return cluster;
-  }
-  ///////////////// END ROSIFY CLUSTER /////////////////
-
   ///////////////// BEGIN PUBLISH MARKER /////////////////
-//  void publishMarker(typename pcl::PointCloud<PointT>::Ptr &cloudPCLPtr,
+//  void publishMarker(pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloudPCLPtr,
 //                     pcl::PointIndices::Ptr &indicesPCLPtr,
 //                     pcl::ModelCoefficients::Ptr &coefficientsPCLPtr) {
 //    sensor_msgs::PointCloud2Ptr cloudMsgPtr(new sensor_msgs::PointCloud2);
@@ -1054,10 +769,10 @@ public:
   /// \param cloud
   /// \return
   ///
-  std::pair<typename pcl::PointCloud<PointT>::Ptr,typename pcl::PointCloud<PointT>::Ptr> SeparateClouds(pcl::PointIndices::Ptr inliers, typename pcl::PointCloud<PointT>::Ptr cloud) {
+  std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr,pcl::PointCloud<pcl::PointXYZRGB>::Ptr> SeparateClouds(pcl::PointIndices::Ptr inliers, pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud) {
 
-    typename pcl::PointCloud<PointT>::Ptr inCloud(new pcl::PointCloud<PointT>());
-    typename pcl::PointCloud<PointT>::Ptr outCloud(new pcl::PointCloud<PointT>());
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr inCloud(new pcl::PointCloud<pcl::PointXYZRGB>());
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr outCloud(new pcl::PointCloud<pcl::PointXYZRGB>());
     pcl::PointIndices outliers;
 
     // Obtain the inlier point cloud by copying only inlier indices to the
@@ -1066,7 +781,7 @@ public:
     // ****** ^ does the same as below for the inliers, cuz we already have the
     // inlier indices******
     //Create extract object
-    pcl::ExtractIndices<PointT> extract (true);
+    pcl::ExtractIndices<pcl::PointXYZRGB> extract (true);
     extract.setInputCloud(cloud);
     extract.setIndices(inliers);
 
@@ -1086,7 +801,7 @@ public:
 //    ROS_INFO_STREAM("Outliers: ");
 //    printIndices(outliers);
 
-    std::pair<typename pcl::PointCloud<PointT>::Ptr,typename pcl::PointCloud<PointT>::Ptr>segResult(inCloud, outCloud);
+    std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr,pcl::PointCloud<pcl::PointXYZRGB>::Ptr>segResult(inCloud, outCloud);
     return segResult;
   }
   ///////////////// END SEPARATE CLOUDS /////////////////
@@ -1098,13 +813,13 @@ public:
   }
 
   ///////////////// BEGIN COMBINE CLOUDS /////////////////
-  /// \brief CombineClouds      std::vector of PointT Clouds
+  /// \brief CombineClouds      std::vector of pcl::PointXYZRGB Clouds
   /// \param lineCloudVector
   /// \param combinedCloud
   ///
   void CombineClouds(
-      std::vector<typename pcl::PointCloud<PointT>::Ptr> lineCloudVector,
-      typename pcl::PointCloud<PointT>::Ptr combinedCloud) {
+      std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> lineCloudVector,
+      pcl::PointCloud<pcl::PointXYZRGB>::Ptr combinedCloud) {
     for (int i = 0; i < lineCloudVector.size(); i++) {
       *combinedCloud += (*lineCloudVector.at(i));
     }
@@ -1119,12 +834,12 @@ public:
   CombineClouds(sensor_msgs::PointCloud2 augendCloudMsg,
                 sensor_msgs::PointCloud2 addendCloudMsg) {
 
-    typename pcl::PointCloud<PointT> augendCloudPCL;
+    pcl::PointCloud<pcl::PointXYZRGB> augendCloudPCL;
     //      ROS_INFO_STREAM("CONVERTING AUGENDCLOUDMSG TO PCL");
     pcl::fromROSMsg(augendCloudMsg, augendCloudPCL);
 
-    typename pcl::PointCloud<PointT>::Ptr addendCloudPCLPtr(
-        new pcl::PointCloud<PointT>);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr addendCloudPCLPtr(
+        new pcl::PointCloud<pcl::PointXYZRGB>);
     // ROS_INFO_STREAM("CONVERTING ADDENDCLOUDMSG TO PCL");
     pcl::fromROSMsg(addendCloudMsg, *addendCloudPCLPtr);
 
@@ -1142,9 +857,9 @@ public:
   /// \param leafSize
   /// \return
   ///
-  void VoxelGrid(typename pcl::PointCloud<PointT>::Ptr inCloudPtr,float leafSize,
-                 typename pcl::PointCloud<PointT>::Ptr filteredCloudPtr) {
-    pcl::VoxelGrid<PointT> voxel;
+  void VoxelGrid(pcl::PointCloud<pcl::PointXYZRGB>::Ptr inCloudPtr,float leafSize,
+                 pcl::PointCloud<pcl::PointXYZRGB>::Ptr filteredCloudPtr) {
+    pcl::VoxelGrid<pcl::PointXYZRGB> voxel;
     voxel.setInputCloud(inCloudPtr);
     voxel.setLeafSize(Voxel_leaf_size_, Voxel_leaf_size_, Voxel_leaf_size_);
     voxel.filter(*filteredCloudPtr);
@@ -1155,53 +870,18 @@ public:
 
 
 
-  void printDebugCloud(typename pcl::PointCloud<pcl::PointXYZ>::Ptr debugCloudPtr) {
+  void printDebugCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr debugCloudPtr) {
     sensor_msgs::PointCloud2 debugCloudMsg;
     pcl::toROSMsg(*debugCloudPtr, debugCloudMsg);
     debugCloudMsg.header = header_;
     debug_pub_.publish(debugCloudMsg);
   }
 
-  void printDebugCloud(typename pcl::PointCloud<pcl::PointXYZRGB>::Ptr debugCloudPtr) {
+  void printDebugCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr debugCloudPtr) {
     sensor_msgs::PointCloud2 debugCloudMsg;
     pcl::toROSMsg(*debugCloudPtr, debugCloudMsg);
     debugCloudMsg.header = header_;
     debug_pub_.publish(debugCloudMsg);
-  }
-
-  ///////////////// BEGIN MARK CLUSTER /////////////////
-  //    visualization_msgs::Marker
-  //    mark_cluster(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster,
-  //    std::string ns ,int id, float r, float g, float b)
-  visualization_msgs::Marker markCluster(docking::Cluster cluster) {
-    uint32_t shape = visualization_msgs::Marker::CUBE;
-    visualization_msgs::Marker marker;
-    marker.header = header_;
-    marker.ns = "docking";
-    marker.id = 0;
-    marker.type = shape;
-    marker.action = visualization_msgs::Marker::ADD;
-
-    marker.pose = cluster.bbox.pose;
-    marker.scale.x = cluster.bbox.dimensions.x;
-    marker.scale.y = cluster.bbox.dimensions.y;
-    marker.scale.z = cluster.bbox.dimensions.z;
-
-    //      if (marker.scale.x == 0)
-    //          marker.scale.x = 0.1;
-    //      if (marker.scale.y == 0)
-    //        marker.scale.y = 0.1;
-    //      if (marker.scale.z == 0)
-    //        marker.scale.z = 0.1;
-
-    marker.color.r = 0.0f;
-    marker.color.g = 1.0f;
-    marker.color.b = 0.0f;
-    marker.color.a = 0.15f;
-
-    marker.lifetime = ros::Duration();
-    //       marker.lifetime = ros::Duration(0.5);
-    return marker;
   }
 
   ///////////////// BEGIN MARK LINE /////////////////
@@ -1429,8 +1109,8 @@ public:
 
 //          ROS_INFO_STREAM("ICP-CLUS--PROCESSING CLUSTER ID " << clusterPtr->clusterID.data);
 
-          typename pcl::PointCloud<PointT>::Ptr inCloudPCLPtr(new pcl::PointCloud<PointT>());
-          typename pcl::PointCloud<PointT>::Ptr outCloudPCLPtr(new pcl::PointCloud<PointT>());
+          pcl::PointCloud<pcl::PointXYZRGB>::Ptr inCloudPCLPtr(new pcl::PointCloud<pcl::PointXYZRGB>());
+          pcl::PointCloud<pcl::PointXYZRGB>::Ptr outCloudPCLPtr(new pcl::PointCloud<pcl::PointXYZRGB>());
           pcl::fromROSMsg(clusterPtr->cloud, *inCloudPCLPtr);
 //          ROS_INFO_STREAM("ICP-CLUS--CREATING ICP REGISTRATION OBJECT ");
 
@@ -1515,7 +1195,7 @@ public:
 
 //  template class SegmentLineNode<pcl::PointXYZ>;
 //  template class SegmentLineNode<pcl::PointXYZI>;
-template class SegmentLineNode<pcl::PointXYZRGB>;
+//template class SegmentLineNode<pcl::PointXYZRGB>;
 //  template class SegmentLineNode<pcl::PointXYZRGBA>;
 
 //} // namespace docking
