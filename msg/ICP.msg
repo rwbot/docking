@@ -1,3 +1,5 @@
 std_msgs/Header header
 geometry_msgs/PoseStamped poseStamped
+geometry_msgs/TransformStamped transformStamped
+visualization_msgs/Marker poseTextMarker
 float64 score

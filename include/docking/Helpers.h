@@ -1,6 +1,7 @@
 #ifndef HELPERS_H
 #define HELPERS_H
 
+#include <docking/Headers.h>
 // Auto-generated from cfg/ directory.
 #include <docking/BoundingBox.h>
 #include <docking/Cluster.h>
@@ -15,6 +16,14 @@
 #include <jsk_recognition_msgs/PolygonArray.h>
 #include <jsk_recognition_msgs/Segment.h>
 #include <jsk_recognition_msgs/SegmentArray.h>
+
+#include <tf/tf.h>
+#include <tf_conversions/tf_eigen.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2_eigen/tf2_eigen.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/TransformStamped.h>
 
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
@@ -129,8 +138,6 @@ void ColorCloud(typename pcl::PointCloud<pcl::PointXYZRGB>::Ptr cPtr,
 }
 ///////////////// END COLOR CLOUD /////////////////
 
-
-
 void extractRGBUI32(int rgb) {
   std::uint8_t r = (rgb >> 16) & 0x0000ff;
   std::uint8_t g = (rgb >> 8) & 0x0000ff;
@@ -140,6 +147,99 @@ void extractRGBUI32(int rgb) {
   //      unsigned(g) << " B " << +b << std::endl;
 }
 
+bool validateDimensions(float& x, float& y, float& z){
+  bool allValid = true;
+  if (x < 0.01f) {
+    x = 0.169;
+    allValid = false;
+  }
+  if (y < 0.01f) {
+    y = 0.169;
+    allValid = false;
+  }
+  if (z < 0.01f) {
+    z = 0.169;
+    allValid = false;
+  }
+  return allValid;
+}
+
+bool validateDimensions(double& x, double& y, double& z){
+  bool allValid = true;
+  if (x < 0.01) {
+    x = 0.169;
+    allValid = false;
+  }
+  if (y < 0.01) {
+    y = 0.169;
+    allValid = false;
+  }
+  if (z < 0.01) {
+    z = 0.169;
+    allValid = false;
+  }
+  return allValid;
+}
+
+// %Tag(poseString)%
+std::string poseString(geometry_msgs::Pose pose, std::string label) {
+  // Convert Pose->Position to String
+  std::ostringstream positionSS;
+  positionSS << std::fixed << std::setprecision(2) << label << std::endl << "[ "<< pose.position.x << ",  " << pose.position.y << ",  " << pose.position.z << " ] ";
+  // positionSS << std::fixed << std::setprecision(2) << "[ "<< pose.position.x << ",  " << pose.position.y << " ] ";
+
+  // Convert Pose->Orientation to String
+  std::ostringstream quarternionSS;
+  quarternionSS << std::fixed << std::setprecision(2) << "[ "<< pose.orientation.x << ",  " << pose.orientation.y << ",  " << pose.orientation.z << ",  " << pose.orientation.w << " ]";
+
+  // Extract Yaw from Quarternion
+  tf::Pose tfPose;
+  tf::poseMsgToTF(pose, tfPose);
+  double yaw = tf::getYaw(tfPose.getRotation());
+  std::ostringstream yawSS;
+  yawSS << std::fixed << std::setprecision(2) << "YAW: " << yaw << "\n";
+
+  // Concatenate strings
+  std::string poseString = positionSS.str() + yawSS.str() + quarternionSS.str();
+  return poseString;
+}
+// %EndTag(poseString)%
+
+
+
+///////////////// BEGIN MARK CLUSTER /////////////////
+//    visualization_msgs::Marker
+//    mark_cluster(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster,
+//    std::string ns ,int id, float r, float g, float b)
+//visualization_msgs::Marker markPose(docking::Cluster cluster)
+visualization_msgs::Marker markPose(geometry_msgs::Pose pose)
+{
+  uint32_t shape = visualization_msgs::Marker::TEXT_VIEW_FACING;
+  visualization_msgs::Marker marker;
+  marker.header.frame_id = "base_link";
+  marker.ns = "docking";
+  marker.id = 0;
+  marker.type = shape;
+  marker.action = visualization_msgs::Marker::ADD;
+
+  marker.text = poseString(pose,"ICP POSE");
+
+  marker.pose.position.y = 0.8;
+  marker.pose.position.x = 0.17;
+
+//  marker.scale.x = 0.5;
+//  marker.scale.y = 0.5;
+  marker.scale.z = 0.1;
+
+  marker.color.r = 1.0f;
+  marker.color.g = 0.0f;
+  marker.color.b = 0.5f;
+  marker.color.a = 1.0f;
+
+  marker.lifetime = ros::Duration();
+  //       marker.lifetime = ros::Duration(0.5);
+  return marker;
+}
 
 
 #endif // HELPERS_H

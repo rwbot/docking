@@ -1,0 +1,27 @@
+<launch>
+<node pkg="tf2_ros" type="static_transform_publisher" name="world_tf" args="0 0 0 0 0 0 1 world odom" />
+
+<node pkg="tf2_ros" type="static_transform_publisher" name="mappy_truth_tf" args="0 0 0 0 0 0 1 world base_link" />
+
+<arg name="dock_x" default="1.0"/>
+<arg name="dock_y" default="0.5"/>
+<arg name="dock_YAW" default="0.0"/>
+
+<node pkg="tf2_ros" type="static_transform_publisher" name="dock_truth_RPY_tf" args="$(arg dock_x) $(arg dock_y) 0 0 0 $(arg dock_YAW) world dock_truth" />
+
+<!-- <node pkg="tf2_ros" type="static_transform_publisher" name="dock_truth_Quarternion_tf" args="2 1 0 0 0 -0.6442 0.7684 world dock_truth" /> -->
+
+
+<node pkg="rostopic" type="rostopic" name="dock_pose_pub" args=
+" pub /dock_pose geometry_msgs/PoseStamped -r 5
+    '{
+        header: {   seq: 0, stamp: {secs: 0, nsecs: 0}, frame_id: 'laser'},
+        pose:   {   position: {x: 1.0, y: 1.0, z: 0.0} ,
+                    orientation: {x: 0, y: 0, z: -0.6442, w: 0.7684}
+                }
+    }'
+"
+     output="screen"/>
+
+
+</launch>

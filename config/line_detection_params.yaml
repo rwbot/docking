@@ -7,4 +7,4 @@ Voxel_leaf_size:        0.001
 
 EC_cluster_tolerance:   0.14
 EC_min_size:            8
-EC_max_size:            100
+EC_max_size:            250

@@ -18,6 +18,11 @@ alias dcyb="cdd; ccy; dcb; sws"
 alias swsd="source ~/dock_ws/devel/setup.bash"
 alias swsm="source ~/mappy_ws/devel/setup.bash"
 
-alias rlmd="rcpy; swsm; roslaunch docking mappy_dock.launch"
-alias rld="rcpy; swsd; roslaunch docking line_detection_node.launch"
 alias rcpy="rosclean purge -y"
+
+alias rlmd="rcpy; swsm; roslaunch docking mappy_dock.launch"
+alias rld="swsd; roslaunch docking line_detection_node.launch"
+
+alias rrim="swsd; rosrun dockbot dock_gazebo_interactive_marker"
+alias rlim="swsd; roslaunch dockbot dock_gazebo_interactive_marker.launch"
+alias rldrz="swsd; swsm; roslaunch docking rviz.launch"

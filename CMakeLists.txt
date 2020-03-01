@@ -75,6 +75,7 @@ find_package(catkin REQUIRED COMPONENTS
    Dock.msg
    MinMaxPoint.msg
    ICP.msg
+   LineOfSight.msg
 #   Message2.msg
  )
 

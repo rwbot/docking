@@ -1,56 +1,57 @@
-﻿#ifndef PCLHELPERS_H
+#ifndef PCLHELPERS_H
 #define PCLHELPERS_H
 
 // Auto-generated from cfg/ directory.
-#include <docking/Helpers.h>
-#include <docking/BoundingBox.h>
-#include <docking/Cluster.h>
-#include <docking/ClusterArray.h>
-#include <docking/Dock.h>
-#include <docking/Line.h>
-#include <docking/LineArray.h>
-#include <docking/MinMaxPoint.h>
-#include <docking/SegmentLineConfig.h>
-
-#include <jsk_recognition_msgs/BoundingBox.h>
-#include <jsk_recognition_msgs/PolygonArray.h>
-#include <jsk_recognition_msgs/Segment.h>
-#include <jsk_recognition_msgs/SegmentArray.h>
-
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl_ros/point_cloud.h>
-#include <ros/ros.h>
-#include <geometry_msgs/Point.h>
-#include <std_msgs/Bool.h>
-#include <std_msgs/String.h>
-#include <visualization_msgs/Marker.h>
-
-#include <pcl/cloud_iterator.h>
-#include <pcl/common/common.h>
-#include <pcl/common/transforms.h>
-#include <pcl/filters/extract_indices.h>
-#include <pcl/io/io.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/pcl_base.h>
-#include <pcl/segmentation/extract_clusters.h>
-#include <pcl/segmentation/sac_segmentation.h>
-#include <pcl/visualization/pcl_visualizer.h>
-#include <pcl/registration/icp.h>
-
-#include <pcl/point_cloud.h>
-//#include <pcl/>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/point_types.h>
-#include <pcl/sample_consensus/ransac.h>
-#include <pcl/sample_consensus/sac_model_line.h>
-
-#include <chrono>
-#include <ctime>
-#include <iostream>
-#include <string>
-#include <vector>
+#include <docking/Headers.h>
 #include <tf/tf.h>
 #include <tf_conversions/tf_eigen.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2_eigen/tf2_eigen.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/TransformStamped.h>
+
+//void printTF2Matrix(tf2::Matrix3x3 tf2m){
+//  tf2::Vector3 r0 = tf2m.getRow(0);
+//  tf2::Vector3 r1 = tf2m.getRow(1);
+//  tf2::Vector3 r2 = tf2m.getRow(2);
+//  std::cout << r0.x() << " " << r0.y() << " " << r0.z() << std::endl;
+//  std::cout << r1.x() << " " << r1.y() << " " << r1.z() << std::endl;
+//  std::cout << r2.x() << " " << r2.y() << " " << r2.z() << std::endl;
+//}
+
+void printTF2Matrix(tf2::Matrix3x3 tf2m)
+{
+  tf2::Vector3 r0 = tf2m.getRow(0);
+  tf2::Vector3 r1 = tf2m.getRow(1);
+  tf2::Vector3 r2 = tf2m.getRow(2);
+  printf("Rotation matrix :\n");
+  printf("    | %6.3f %6.3f %6.3f | \n", r0.x(), r0.y(), r0.z());
+  printf("R = | %6.3f %6.3f %6.3f | \n", r1.x(), r1.y(), r1.z());
+  printf("    | %6.3f %6.3f %6.3f | \n", r2.x(), r2.y(), r2.z());
+//  printf("Translation vector :\n");
+//  printf("t = < %6.3f, %6.3f, %6.3f >\n\n", matrix(0, 3), matrix(1, 3), matrix(2, 3));
+}
+
+void print4x4Matrix(const Eigen::Matrix4d &matrix)
+{
+  printf("Rotation matrix :\n");
+  printf("    | %6.3f %6.3f %6.3f | \n", matrix(0, 0), matrix(0, 1), matrix(0, 2));
+  printf("R = | %6.3f %6.3f %6.3f | \n", matrix(1, 0), matrix(1, 1), matrix(1, 2));
+  printf("    | %6.3f %6.3f %6.3f | \n", matrix(2, 0), matrix(2, 1), matrix(2, 2));
+  printf("Translation vector :\n");
+  printf("t = < %6.3f, %6.3f, %6.3f >\n\n", matrix(0, 3), matrix(1, 3), matrix(2, 3));
+}
+
+void printTF2Quarternion(tf2::Quaternion tf2q)
+{
+  printf("QUARTERNION :\n");
+  printf("    | %6.3f | \n", tf2q.x());
+  printf("Q = | %6.3f | \n", tf2q.y());
+  printf("    | %6.3f | \n", tf2q.z());
+  printf("    | %6.3f | \n", tf2q.w());
+}
+
 
 Eigen::Vector4f toEigen(pcl::ModelCoefficients pmc){
   pcl::ModelCoefficients::Ptr pmcPtr (new pcl::ModelCoefficients(pmc));
@@ -78,9 +79,7 @@ geometry_msgs::Pose Matrix4TFtoPose(Eigen::Matrix4f m4f){
                 rot3x3(0,1),rot3x3(1,1),rot3x3(2,1),
                 rot3x3(0,2),rot3x3(1,2),rot3x3(2,2)) ;
 
-
 //  tf::matrixEigenToTF(eq,tfm3);
-
 
 //  tf::transformEigenToTF(rot3x3,tf);
 
@@ -133,6 +132,78 @@ geometry_msgs::Pose Matrix4TFtoPose(Eigen::Matrix4f m4f){
 }
 
 
+geometry_msgs::TransformStamped Matrix4TFtoTransform(Eigen::Matrix4f m4f){
+
+  Eigen::Matrix4d m4d = m4f.cast <double> ();
+  geometry_msgs::TransformStamped tfs;
+
+//  ROS_INFO_STREAM("Matrix4TFtoPose-- Extracting Rotation Matrix in Eigen::Matrix3d ");
+//  ROS_INFO_STREAM("Matrix4TFtoPose-- Copying Rotation Matrix into tf::Matrix3x3");
+  tf2::Matrix3x3 tf2m3(m4d(0,0),m4d(1,0),m4d(2,0),
+                     m4d(0,1),m4d(1,1),m4d(2,1),
+                     m4d(0,2),m4d(1,2),m4d(2,2)) ;
+//  ROS_INFO_STREAM("Matrix4TFtoPose-- tf::Matrix3x3 Rotation Matrix " );
+//  printTF2Matrix(tf2m3);
+
+
+  tf2::Matrix3x3 tf2m3_inv = tf2m3.inverse();
+//  ROS_INFO_STREAM("Matrix4TFtoPose-- tf::Matrix3x3 Rotation Matrix INVERTED ");
+//  printTF2Matrix(tf2m3_inv);
+
+  double roll, pitch, yaw;
+  tf2m3.getRPY(roll,pitch,yaw);
+  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- TF2::Matrix3 getRPY() roll " << roll << " pitch " << pitch << " yaw " << yaw);
+
+//  tf2m3_inv.getRPY(roll,pitch,yaw);
+//  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- INVERTED TF2::Matrix3 getRPY() roll " << roll << " pitch " << pitch << " yaw " << yaw                 );
+
+//  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- CREATING QUARTERNION ");
+  tf2::Quaternion tf2q;
+//  printTF2Quarternion(tf2q);
+//  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- QUARTERNION.GETROTATION() ");
+  tf2m3.getRotation(tf2q);
+//  printTF2Quarternion(tf2q);
+
+//  tf2m3_inv.getRotation(tf2q);
+//  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- INVERTED TF2::Matrix3 getRotation()  Quarternion Z: " << tf2q.z() << " W: " << tf2q.w());
+
+//  double yaw_rad = tf2Atan2(m4d(0,0),m4d(0,1));
+//  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- YAW in DEGREES" << yaw_deg);
+//  double yaw_rad = tf2Radians(yaw_deg);
+//  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- MANUALLY CALCULATED YAW in RADIANS " << yaw_rad);
+//  tf2q.setRPY(0,0,yaw_rad);
+
+//  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- NON-NORMALIZED QUARTERNION ");
+//  printTF2Quarternion(tf2q);
+  tf2q.normalize();
+//  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- QUARTERNION NORMALIZED ");
+//  printTF2Quarternion(tf2q);
+
+
+//  ROS_INFO_STREAM("Matrix4TFtoPose-- Extracting Translation Vector into tf::Vector3");
+  tf2::Vector3 tfv3(m4d(0,3),m4d(1,3),m4d(2,3));
+
+//  tfs.header.stamp = ros::Time::now();                                                                                                                                                                                 
+//  tfs.header.frame_id = "world";                                  
+//  tfs.child_frame_id = turtle_name;
+
+  tfs.transform.translation.x = -(tfv3.x());
+  tfs.transform.translation.y = tfv3.y();
+  tfs.transform.translation.z = tfv3.z();
+
+  tfs.transform.rotation.x = tf2q.x();
+  tfs.transform.rotation.y = tf2q.y();
+  tfs.transform.rotation.z = tf2q.z();
+  tfs.transform.rotation.w = tf2q.w();
+
+//  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- RETURNING TRANSFORM ");
+  ROS_INFO_STREAM("Matrix4TFtoTransformStamped-- TRANSFORM " << tfs.transform);
+
+  return tfs;
+}
+
+
+
 double getAngle(docking::Line l1, docking::Line l2){
   double angle;
   pcl_msgs::ModelCoefficients lmc1 = l1.coefficients;
@@ -176,7 +247,7 @@ docking::MinMaxPoint getMinMaxPointMsg(typename pcl::PointCloud<pcl::PointXYZ>::
   minMaxMsg.min = pointPCLToMSG(minPointPCL);
   minMaxMsg.max = pointPCLToMSG(maxPointPCL);
 //  ROS_INFO_STREAM("MinMax msg: " << minMaxMsg);
-  std::cout << std::endl;
+//  std::cout << std::endl;
   return minMaxMsg;
 }
 
@@ -190,7 +261,7 @@ docking::MinMaxPoint getMinMaxPointMsg(typename pcl::PointCloud<pcl::PointXYZRGB
   minMaxMsg.min = pointPCLToMSG(minPointPCL);
   minMaxMsg.max = pointPCLToMSG(maxPointPCL);
 //  ROS_INFO_STREAM(minMaxMsg);
-  std::cout << std::endl;
+//  std::cout << std::endl;
   return minMaxMsg;
 }
 
@@ -209,7 +280,7 @@ double getEuclideanDistance(docking::Line line) {
 
   length = sqrt( dx*dx + dy*dy  );
 //  ROS_INFO_STREAM("EUCLIDEAN DISTANCE: " << length);
-  std::cout << std::endl;
+//  std::cout << std::endl;
   return length;
 }
 
@@ -291,6 +362,12 @@ float compareCoefficients(pcl_msgs::ModelCoefficients c1, pcl_msgs::ModelCoeffic
   return avgDelta;
 }
 
+void printIndices(pcl::PointIndices indices) {
+   for(size_t i=0; i < indices.indices.size(); i++)
+      std::cout << indices.indices.at(i) << ' ';
+   //std::cout << std::endl;
+}
+
 int comparePointIndices(pcl_msgs::PointIndices pi1, pcl_msgs::PointIndices pi2){
   pcl_msgs::PointIndices diffPoints;
   int numDiffPoints;
@@ -327,7 +404,124 @@ int comparePointIndices(pcl_msgs::PointIndices pi1, pcl_msgs::PointIndices pi2){
     return numDiffPoints;
   }
 
+///////////////// BEGIN COMBINE CLOUDS /////////////////
+/// \brief CombineClouds      std::vector of pcl::PointXYZRGB Clouds
+/// \param lineCloudVector
+/// \param combinedCloud
+///
+void CombineClouds(
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> lineCloudVector,
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr combinedCloud) {
+  for (int i = 0; i < lineCloudVector.size(); i++) {
+    *combinedCloud += (*lineCloudVector.at(i));
+  }
+}
 
+/////
+/// \brief CombineClouds sensor_msgs::PointCloud2
+/// \param augendCloudMsgPtr    Main cloud
+/// \param addendCloudMsgPtr    Cloud to be added to Main cloud
+///
+sensor_msgs::PointCloud2
+CombineClouds(sensor_msgs::PointCloud2 augendCloudMsg,
+              sensor_msgs::PointCloud2 addendCloudMsg) {
+
+  pcl::PointCloud<pcl::PointXYZRGB> augendCloudPCL;
+  //      ROS_INFO_STREAM("CONVERTING AUGENDCLOUDMSG TO PCL");
+  pcl::fromROSMsg(augendCloudMsg, augendCloudPCL);
+
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr addendCloudPCLPtr(
+      new pcl::PointCloud<pcl::PointXYZRGB>);
+  // ROS_INFO_STREAM("CONVERTING ADDENDCLOUDMSG TO PCL");
+  pcl::fromROSMsg(addendCloudMsg, *addendCloudPCLPtr);
+
+  // ROS_INFO_STREAM("ADDING PCL DETECTED LINE CLUSTERS");
+  augendCloudPCL += *addendCloudPCLPtr;
+  // ROS_INFO_STREAM("CONVERTING COMBINED LINE CLUSTER CLOUD TO ROS MSG");
+  pcl::toROSMsg(augendCloudPCL, augendCloudMsg);
+  return augendCloudMsg;
+}
+///////////////// END COMBINE CLOUDS /////////////////
+
+///////////////// BEGIN SEPARATE CLOUDS /////////////////
+/// \brief SeparateClouds
+/// \param inliers
+/// \param cloud
+/// \return
+///
+std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr,pcl::PointCloud<pcl::PointXYZRGB>::Ptr> SeparateClouds(pcl::PointIndices::Ptr inliers, pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud) {
+
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr inCloud(new pcl::PointCloud<pcl::PointXYZRGB>());
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr outCloud(new pcl::PointCloud<pcl::PointXYZRGB>());
+  pcl::PointIndices outliers;
+
+  // Obtain the inlier point cloud by copying only inlier indices to the
+  // planeCloud for(int index : inliers->indices)
+  //     inCloud->points.push_back(cloud->points[index]);
+  // ****** ^ does the same as below for the inliers, cuz we already have the
+  // inlier indices******
+  //Create extract object
+  pcl::ExtractIndices<pcl::PointXYZRGB> extract (true);
+  extract.setInputCloud(cloud);
+  extract.setIndices(inliers);
+
+  // Get plane cloud (inliers)
+  extract.setNegative(false); // Extract the inliers, not outliers
+  extract.filter(*inCloud);   // Output cloud
+
+  extract.getRemovedIndices(outliers);
+
+  // Get obstacle cloud (outliers)
+  extract.setNegative(true); // Extract the outliers, not inliers
+  extract.filter(*outCloud); // Output cloud
+
+//    ROS_INFO_STREAM("Inliers: " << inCloud->width * inCloud->height << " points Outliers: " << outCloud->width * outCloud->height << " points");
+//    ROS_INFO_STREAM("Inliers: ");
+//    printIndices(*inliers);
+//    ROS_INFO_STREAM("Outliers: ");
+//    printIndices(outliers);
+
+  std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr,pcl::PointCloud<pcl::PointXYZRGB>::Ptr>segResult(inCloud, outCloud);
+  return segResult;
+}
+///////////////// END SEPARATE CLOUDS /////////////////
+
+
+///////////////// BEGIN GET CENTROID/////////////////
+/// \brief getCentroid
+/// \param inCloudPtr
+/// \return centroid
+///
+geometry_msgs::Pose getCentroid(pcl::PointCloud<pcl::PointXYZRGB>::Ptr inCloudPtr) {
+  Eigen::Vector4f centroidVec4f;
+  pcl::compute3DCentroid(*inCloudPtr, centroidVec4f);
+  geometry_msgs::Pose centroid;
+  centroid.position.x = double(centroidVec4f[0]);
+  centroid.position.y = double(centroidVec4f[1]);
+  centroid.position.z = double(centroidVec4f[2]);
+  centroid.orientation.x = 0.0;
+  centroid.orientation.y = 0.0;
+  centroid.orientation.z = 0.0;
+  centroid.orientation.w = 1.0;
+  //        std::cout << "The XYZ coordinates of the centroid are: ("
+  //              << centroid.x << ", "
+  //              << centroid.y << ", "
+  //              << centroid.z << ")." << std::endl;
+  return centroid;
+}
+///////////////// END GET CENTROID /////////////////
+
+///////////////// BEGIN GET SEGMENT /////////////////
+/// \brief getSegment
+/// \param inCloudPtr
+/// \return Segment
+///
+jsk_recognition_msgs::Segment getSegment(pcl::PointCloud<pcl::PointXYZRGB>::Ptr inCloudPtr){
+  docking::MinMaxPoint mmp = getMinMaxPointMsg(inCloudPtr);
+  jsk_recognition_msgs::Segment segment = minMaxToSegment(mmp);
+  return segment;
+}
+///////////////// END GET SEGMENT /////////////////
 
 
 
