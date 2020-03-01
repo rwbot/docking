@@ -17,6 +17,8 @@
 #include <docking/ICP.h>
 
 #include <docking/Clustering.h>
+#include <docking/LineDetection.h>
+#include <docking/PoseEstimation.h>
 
 #include <jsk_recognition_msgs/BoundingBox.h>
 #include <jsk_recognition_msgs/PolygonArray.h>
@@ -30,7 +32,11 @@
 #include <std_msgs/String.h>
 #include <visualization_msgs/Marker.h>
 
+#include <tf/tf.h>
+#include <tf_conversions/tf_eigen.h>
 #include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2_eigen/tf2_eigen.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/TransformStamped.h>
 
@@ -63,7 +69,5 @@
 #include <iostream>
 #include <string>
 #include <vector>
-
-std_msgs::Header header_;
 
 #endif // HEADERS_H

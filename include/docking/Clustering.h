@@ -9,7 +9,7 @@ public:
   Clustering(){
 
   }
-  ~Clustering(){};
+  ~Clustering(){}
 
   std_msgs::Header header_;
 
@@ -31,16 +31,11 @@ public:
     marker.action = visualization_msgs::Marker::ADD;
 
     marker.pose = cluster.bbox.pose;
+
+    validateDimensions(cluster.bbox.dimensions.x, cluster.bbox.dimensions.y, cluster.bbox.dimensions.z);
     marker.scale.x = cluster.bbox.dimensions.x;
     marker.scale.y = cluster.bbox.dimensions.y;
     marker.scale.z = cluster.bbox.dimensions.z;
-
-    //      if (marker.scale.x == 0)
-    //          marker.scale.x = 0.1;
-    //      if (marker.scale.y == 0)
-    //        marker.scale.y = 0.1;
-    //      if (marker.scale.z == 0)
-    //        marker.scale.z = 0.1;
 
     marker.color.r = 0.0f;
     marker.color.g = 1.0f;
@@ -53,9 +48,11 @@ public:
   }
 
 
+
 ///////////////// BEGIN ROSIFY CLUSTER /////////////////
 docking::Cluster rosifyCluster(pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloudPCLPtr,
                                pcl::PointIndices::Ptr &indicesPCLPtr) {
+
   docking::Cluster clusterMsg;
   sensor_msgs::PointCloud2Ptr cloudMsgPtr(new sensor_msgs::PointCloud2);
   pcl_msgs::PointIndicesPtr indicesMsgPtr(new pcl_msgs::PointIndices);
@@ -131,6 +128,8 @@ docking::BoundingBox getBoundingBoxCluster(docking::Cluster cluster) {
   bbox.dimensions.y = bbox.max.y - bbox.min.y;
   bbox.dimensions.z = bbox.max.z - bbox.min.z;
 
+  validateDimensions(bbox.dimensions.x, bbox.dimensions.y, bbox.dimensions.z);
+
   bbox.area = (bbox.max.x - bbox.min.x) * (bbox.max.y - bbox.min.y);
   bbox.volume = (bbox.area) * (bbox.max.z - bbox.min.z);
 
@@ -141,7 +140,7 @@ docking::BoundingBox getBoundingBoxCluster(docking::Cluster cluster) {
 ///////////////// END BOUNDING BOX CLUSTER /////////////////
 
 ///////////////// BEGIN BOUNDING BOX CLUSTER ORIENTED /////////////////
-/// \brief getBoundingBoxCluster
+/// \brief getBoundingBoxClusterOriented
 /// \param cluster
 /// \return bbox
 ///
@@ -236,9 +235,10 @@ docking::BoundingBox getBoundingBoxClusterOriented(
   //        @TODO: Points still in dock frame
   //              Transform min and max points back into laser frame
   //        bboxMsg.dimensions.x = bboxMsg.max.x - bboxMsg.min.x ;
-  bboxMsg.dimensions.x = 0.1; //
+  bboxMsg.dimensions.x = 0.0777; //
   bboxMsg.dimensions.y = bboxMsg.max.y - bboxMsg.min.y;
   bboxMsg.dimensions.z = bboxMsg.max.z - bboxMsg.min.z;
+  validateDimensions(bboxMsg.dimensions.x,bboxMsg.dimensions.y,bboxMsg.dimensions.z);
 
   bboxMsg.area = bboxMsg.dimensions.x * bboxMsg.dimensions.y;
   bboxMsg.volume = (bboxMsg.area) * bboxMsg.dimensions.z;
@@ -269,6 +269,19 @@ jsk_recognition_msgs::BoundingBox bboxToJSK(docking::BoundingBox dbbox) {
   jbbox.header = header_;
   jbbox.pose = dbbox.pose;
   jbbox.dimensions = dbbox.dimensions;
+
+//  ROS_INFO_STREAM("bboxToJSK: Dimensions BEFORE: [ " << dbbox.dimensions.x << ", " << dbbox.dimensions.y << ", " << dbbox.dimensions.z << " ]");
+
+  if(!validateDimensions(jbbox.dimensions.x, jbbox.dimensions.y, jbbox.dimensions.z))
+  {
+    ROS_WARN_STREAM(__FILE__ << "::bboxToJSK- BOUNDING BOX DIMENSIONS INVALID [ " << dbbox.dimensions.x << ", " << dbbox.dimensions.y << ", " << dbbox.dimensions.z << " ]");
+    validateDimensions(dbbox.dimensions.x, dbbox.dimensions.y, dbbox.dimensions.z);
+//    ROS_INFO_STREAM("bboxToJSK: Dimensions AFTER: [ " << jbbox.dimensions.x << ", " << jbbox.dimensions.y << ", " << jbbox.dimensions.z << " ]");
+
+    ROS_WARN_STREAM(ros::WallTime::now());
+//    ros::shutdown();
+  }
+
   //        ROS_INFO_STREAM("dbbox.dimensions: " << dbbox.dimensions);
   //        ROS_INFO_STREAM("jbbox.dimensions: " << jbbox.dimensions);
   jbbox.value = 0.5;

@@ -33,7 +33,8 @@ int main(int argc, char **argv)
     ros::NodeHandle nh("~");
 
 //    docking::SegmentLineNode<PointT> *segmentLineNode = new docking::SegmentLineNode<PointT>(nh);
-    SegmentLineNode<PointT> *segmentLineNode = new SegmentLineNode<PointT>(nh);
+//    SegmentLineNode<PointT> *segmentLineNode = new SegmentLineNode<PointT>(nh);
+    SegmentLineNode *segmentLineNode = new SegmentLineNode(nh);
     // Spin
     ros::spin();
 

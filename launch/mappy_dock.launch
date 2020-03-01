@@ -1,9 +1,10 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="gui" default="true"/>
+    <arg name="gui" default="false"/>
     <arg name="dock_x" default="1.0"/>
-    <arg name="dock_y" default="0.0"/>
-    <arg name="dock_YAW" default="-1.57"/>
+    <arg name="dock_y" default="0.5"/>
+    <arg name="dock_YAW" default="0.5"/>
+
 
     <arg name="world_name" default="worlds/empty.world"/>
     <!-- <arg name="world_name" value="$(find docking)/worlds/obstacles.world"/> -->
@@ -18,6 +19,14 @@
     </include>
 
     <include file="$(find docking)/launch/laserscan_to_pointcloud.launch"/>
+
+    <!-- <include file="$(find docking)/launch/tf_truth.launch">
+        <arg name="dock_x" value="$(arg dock_x)" />
+        <arg name="dock_y" value="$(arg dock_y)" />
+        <arg name="dock_YAW" value="$(arg dock_YAW)" />
+    </include> -->
+
+    <include file="$(find logitech_f710)/launch/f710.launch"/>
 
     <arg name="x" default="0"/>
     <arg name="y" default="0"/>
@@ -34,10 +43,12 @@
 
 
     <arg name="rvizconfig" default="$(find docking)/config/rviz/docking.rviz" />
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" />
+    <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" /> -->
 
     <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
         <param name="publish_frequency" type="double" value="30.0" />
     </node>
+
+    <!-- <include file="$(find dockbot)/launch/dock_gazebo_interactive_marker.launch"/> -->
 
 </launch>
