@@ -28,6 +28,7 @@ find_package(catkin REQUIRED COMPONENTS
   visualization_msgs
   jsk_recognition_msgs
   tf_conversions
+  nav_msgs
 #  PCL 1.8 REQUIRED
 )
 
@@ -76,6 +77,7 @@ find_package(catkin REQUIRED COMPONENTS
    MinMaxPoint.msg
    ICP.msg
    LineOfSight.msg
+   Plan.msg
 #   Message2.msg
  )
 
@@ -102,6 +104,7 @@ find_package(catkin REQUIRED COMPONENTS
    sensor_msgs
    visualization_msgs
    jsk_recognition_msgs
+   nav_msgs
  )
 
 ################################################

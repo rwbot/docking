@@ -182,7 +182,7 @@ bool validateDimensions(double& x, double& y, double& z){
 }
 
 // %Tag(poseString)%
-std::string poseString(geometry_msgs::Pose pose, std::string label) {
+std::string poseString(geometry_msgs::Pose pose, std::string label = std::string(), bool oneLine=true) {
   // Convert Pose->Position to String
   std::ostringstream positionSS;
   positionSS << std::fixed << std::setprecision(2) << label << std::endl << "[ "<< pose.position.x << ",  " << pose.position.y << ",  " << pose.position.z << " ] ";
@@ -190,14 +190,16 @@ std::string poseString(geometry_msgs::Pose pose, std::string label) {
 
   // Convert Pose->Orientation to String
   std::ostringstream quarternionSS;
-  quarternionSS << std::fixed << std::setprecision(2) << "[ "<< pose.orientation.x << ",  " << pose.orientation.y << ",  " << pose.orientation.z << ",  " << pose.orientation.w << " ]";
+  quarternionSS << std::fixed << std::setprecision(2) << " [ "<< pose.orientation.x << ",  " << pose.orientation.y << ",  " << pose.orientation.z << ",  " << pose.orientation.w << " ]";
 
   // Extract Yaw from Quarternion
   tf::Pose tfPose;
   tf::poseMsgToTF(pose, tfPose);
   double yaw = tf::getYaw(tfPose.getRotation());
   std::ostringstream yawSS;
-  yawSS << std::fixed << std::setprecision(2) << "YAW: " << yaw << "\n";
+  yawSS << std::fixed << std::setprecision(2) << "YAW: " << yaw;
+  if(!oneLine)
+    yawSS << "\n";
 
   // Concatenate strings
   std::string poseString = positionSS.str() + yawSS.str() + quarternionSS.str();
