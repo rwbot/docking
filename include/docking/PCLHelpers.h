@@ -117,6 +117,28 @@ std::string transformString(tf2::Transform tf2)
   return poseString;
 }
 
+std::string transformString(geometry_msgs::Transform tfMsg)
+{
+  tf2::Transform tf2;
+  tf2::convert(tfMsg,tf2);
+  return transformString(tf2);
+}
+
+std::string transformString(geometry_msgs::TransformStamped tfMsgStamped)
+{
+  std::ostringstream frameSS;
+  frameSS << " frame_id: " << tfMsgStamped.header.frame_id;
+  frameSS << " child_frame_id: " << tfMsgStamped.child_frame_id;
+
+  tf2::Transform tf2;
+  tf2::convert(tfMsgStamped.transform,tf2);
+
+  // Concatenate strings
+  std::string pose_string =  transformString(tf2) + frameSS.str() ;
+  return pose_string;
+  }
+
+
 Eigen::Vector4f toEigen(pcl::ModelCoefficients pmc){
   pcl::ModelCoefficients::Ptr pmcPtr (new pcl::ModelCoefficients(pmc));
   pmcPtr->values.resize (4);

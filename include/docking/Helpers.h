@@ -207,6 +207,16 @@ std::string poseString(geometry_msgs::Pose pose, std::string label = std::string
 }
 // %EndTag(poseString)%
 
+std::string poseString(geometry_msgs::PoseStamped pose, std::string label = std::string(), bool oneLine=true) {
+
+  std::ostringstream frameSS;
+  frameSS << " frame_id: " << pose.header.frame_id;
+
+  // Concatenate strings
+  std::string pose_string = poseString(pose.pose) + frameSS.str() ;
+  return pose_string;
+}
+
 
 
 ///////////////// BEGIN MARK CLUSTER /////////////////
