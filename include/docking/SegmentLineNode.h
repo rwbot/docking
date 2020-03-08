@@ -477,12 +477,12 @@ public:
       //          docking::LineArray::Ptr linesPtr (new docking::LineArray(lines));
       lines_pub_.publish(linesPtr_);
 
-      // Assign Dock Cluster
-      docking::Cluster dockCluster = clustersPtr_->clusters.front();
+      // Assign Dock Cluster When Debugging in Dock ONly World
+//      docking::Cluster dockCluster = clustersPtr_->clusters.front();
 
-      dock_marker_pub_.publish(dockCluster.bbox.marker);
-      bbox_pub_.publish(dockCluster.bbox);
-      jsk_bbox_pub_.publish(clustering.bboxToJSK(dockCluster.bbox));
+//      dock_marker_pub_.publish(dockCluster.bbox.marker);
+//      bbox_pub_.publish(dockCluster.bbox);
+//      jsk_bbox_pub_.publish(clustering.bboxToJSK(dockCluster.bbox));
     }
 
 //    if(clustersPtr_->clusters.size()>0)
@@ -526,6 +526,9 @@ public:
       dock_pose_pub_.publish(dockClusterPtr->icp.poseStamped);
       dock_pose_marker_pub_.publish(dockClusterPtr->icp.poseTextMarker);
 //      dock_marker_pub_.publish(dockClusterPtr->bbox.marker);
+      dock_marker_pub_.publish(dockClusterPtr->bbox.marker);
+      bbox_pub_.publish(dockClusterPtr->bbox);
+      jsk_bbox_pub_.publish(clustering.bboxToJSK(dockClusterPtr->bbox));
 
       dockClusterPtr->icp.transformStamped.header.stamp = ros::Time::now();
       dockClusterPtr->icp.transformStamped.header.frame_id = laser_frame_;
