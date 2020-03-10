@@ -5,8 +5,15 @@
 #include <docking/Headers.h>
 #include <tf/tf.h>
 #include <tf_conversions/tf_eigen.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Vector3.h>
+#include <tf2/LinearMath/Transform.h>
+#include <tf2/convert.h>
+#include <tf2/utils.h>
+#include <tf2/impl/utils.h>
+#include <tf2/impl/convert.h>
 #include <tf2_eigen/tf2_eigen.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include  <tf/transform_listener.h>
@@ -62,6 +69,85 @@ void printTF2Quarternion(tf2::Quaternion tf2q)
   printf("    | %6.3f | \n", tf2q.z());
   printf("    | %6.3f | \n", tf2q.w());
 }
+
+void printTFQuarternion(tf::Quaternion tfq)
+{
+  printf("QUARTERNION :\n");
+  printf("    | %6.3f | \n", tfq.x());
+  printf("Q = | %6.3f | \n", tfq.y());
+  printf("    | %6.3f | \n", tfq.z());
+  printf("    | %6.3f | \n", tfq.w());
+}
+
+// Convert Pose->Orientation to String
+std::string quaternionString(tf::Quaternion tfq){
+  std::ostringstream qss;
+  qss << std::fixed << std::setprecision(3) << "[ "<< tfq.getX() << ",  " << tfq.getY() << ",  " << tfq.getZ() << ",  " << tfq.getW() << " ]";
+ return qss.str();
+}
+
+std::string quaternionString(tf2::Quaternion tf2q){
+  std::ostringstream qss;
+  qss << std::fixed << std::setprecision(3) << "[ "<< tf2q.getX() << ",  " << tf2q.getY() << ",  " << tf2q.getZ() << ",  " << tf2q.getW() << " ]";
+ return qss.str();
+}
+
+// Convert Pose->Orientation to String
+std::string quaternionString(geometry_msgs::Quaternion q){
+  std::ostringstream qss;
+  qss << std::fixed << std::setprecision(2) << "[ "<< q.x << ",  " << q.y << ",  " << q.z << ",  " << q.w << " ]";
+ return qss.str();
+}
+
+std::string twistString(geometry_msgs::Twist t){
+  std::ostringstream tss;
+  tss << std::fixed << std::setprecision(3) << "[ X: "<< t.linear.x << ",  Z: " << t.angular.z <<  " ]";
+ return tss.str();
+}
+
+std::string vectorString(tf2::Vector3 tf2v3){
+  std::ostringstream qss;
+  qss << std::fixed << std::setprecision(2) << "[ "<< tf2v3.getX() << ",  " << tf2v3.getY() << ",  " << tf2v3.getZ() << " ]";
+ return qss.str();
+}
+
+std::string transformString(tf2::Transform tf2)
+{
+  // Convert Transform->Position to String
+  tf2::Vector3 v = tf2.getOrigin();
+  std::ostringstream positionSS;
+  positionSS << std::fixed << std::setprecision(2) << std::endl << "[ "<< v.getX() << ",  " << v.getY() << ",  " << v.getZ() << " ] ";
+
+//  // Extract Yaw from Quarternion
+//  std::ostringstream yawSS;
+//  yawSS << std::fixed << std::setprecision(2) << "YAW: " << tf2::getYaw(tf2.getRotation()) << "\n";
+
+  // Concatenate strings
+  std::string poseString = positionSS.str() + quaternionString(tf2.getRotation());
+//  std::string poseString = positionSS.str() + yawSS.str() + quarternionSS.str();
+  return poseString;
+}
+
+std::string transformString(geometry_msgs::Transform tfMsg)
+{
+  tf2::Transform tf2;
+  tf2::convert(tfMsg,tf2);
+  return transformString(tf2);
+}
+
+std::string transformString(geometry_msgs::TransformStamped tfMsgStamped)
+{
+  std::ostringstream frameSS;
+  frameSS << " frame_id: " << tfMsgStamped.header.frame_id;
+  frameSS << " child_frame_id: " << tfMsgStamped.child_frame_id;
+
+  tf2::Transform tf2;
+  tf2::convert(tfMsgStamped.transform,tf2);
+
+  // Concatenate strings
+  std::string pose_string =  transformString(tf2) + frameSS.str() ;
+  return pose_string;
+  }
 
 
 Eigen::Vector4f toEigen(pcl::ModelCoefficients pmc){

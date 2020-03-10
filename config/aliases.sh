@@ -26,3 +26,5 @@ alias rld="swsd; roslaunch docking line_detection_node.launch"
 alias rrim="swsd; rosrun dockbot dock_gazebo_interactive_marker"
 alias rlim="swsd; roslaunch dockbot dock_gazebo_interactive_marker.launch"
 alias rldrz="swsd; swsm; roslaunch docking rviz.launch"
+
+alias rlpc="swsd; roslaunch docking pose_controller_node.launch"

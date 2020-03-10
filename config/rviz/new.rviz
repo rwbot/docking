@@ -448,26 +448,26 @@ Visualization Manager:
       Queue Size: 100
       Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /line_detection_node/docking/dock_marker
       Name: Dock Marker
       Namespaces:
         docking: true
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /line_detection_node/docking/dock_pose_marker
       Name: Dock Pose Marker
       Namespaces:
         docking: true
       Queue Size: 100
-      Value: true
+      Value: false
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
       Color: 249; 16; 227
-      Enabled: true
+      Enabled: false
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.15000000596046448
@@ -480,10 +480,26 @@ Visualization Manager:
         Z: 0
       Pose Color: 255; 85; 255
       Pose Style: Axes
-      Radius: 0.009999999776482582
+      Radius: 0.003000000026077032
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
       Topic: /docking/path
+      Unreliable: false
+      Value: false
+    - Alpha: 1
+      Arrow Length: 0.05000000074505806
+      Axes Length: 0.30000001192092896
+      Axes Radius: 0.009999999776482582
+      Class: rviz/PoseArray
+      Color: 255; 25; 0
+      Enabled: true
+      Head Length: 0.07000000029802322
+      Head Radius: 0.029999999329447746
+      Name: PoseArray
+      Shaft Length: 0.23000000417232513
+      Shaft Radius: 0.009999999776482582
+      Shape: Arrow (Flat)
+      Topic: /docking/pose_array
       Unreliable: false
       Value: true
   Enabled: true
@@ -523,11 +539,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 170.3275604248047
+      Scale: 342.96136474609375
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 0.7670168280601501
-      Y: -0.40095117688179016
+      X: 0.9381775259971619
+      Y: -0.22772100567817688
     Saved: ~
 Window Geometry:
   Displays:
