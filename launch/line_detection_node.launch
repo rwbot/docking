@@ -16,6 +16,6 @@
     </node>
 
 	<!-- Start up the dynamic reconfigure GUI. -->
-	<node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure"/>
+	<!-- <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure"/> -->
 
 </launch>

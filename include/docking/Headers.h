@@ -1,6 +1,7 @@
 #ifndef HEADERS_H
 #define HEADERS_H
 
+#include <docking/TFHelpers.h>
 #include <docking/Helpers.h>
 #include <docking/PCLHelpers.h>
 // Dynamic reconfigure includes.

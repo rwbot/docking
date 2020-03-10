@@ -181,41 +181,6 @@ bool validateDimensions(double& x, double& y, double& z){
   return allValid;
 }
 
-// %Tag(poseString)%
-std::string poseString(geometry_msgs::Pose pose, std::string label = std::string(), bool oneLine=true) {
-  // Convert Pose->Position to String
-  std::ostringstream positionSS;
-  positionSS << std::fixed << std::setprecision(2) << label << std::endl << "[ "<< pose.position.x << ",  " << pose.position.y << ",  " << pose.position.z << " ] ";
-  // positionSS << std::fixed << std::setprecision(2) << "[ "<< pose.position.x << ",  " << pose.position.y << " ] ";
-
-  // Convert Pose->Orientation to String
-  std::ostringstream quarternionSS;
-  quarternionSS << std::fixed << std::setprecision(2) << " [ "<< pose.orientation.x << ",  " << pose.orientation.y << ",  " << pose.orientation.z << ",  " << pose.orientation.w << " ]";
-
-  // Extract Yaw from Quarternion
-  tf::Pose tfPose;
-  tf::poseMsgToTF(pose, tfPose);
-  double yaw = tf::getYaw(tfPose.getRotation());
-  std::ostringstream yawSS;
-  yawSS << std::fixed << std::setprecision(2) << "YAW: " << yaw;
-  if(!oneLine)
-    yawSS << "\n";
-
-  // Concatenate strings
-  std::string poseString = positionSS.str() + yawSS.str() + quarternionSS.str();
-  return poseString;
-}
-// %EndTag(poseString)%
-
-std::string poseString(geometry_msgs::PoseStamped pose, std::string label = std::string(), bool oneLine=true) {
-
-  std::ostringstream frameSS;
-  frameSS << " frame_id: " << pose.header.frame_id;
-
-  // Concatenate strings
-  std::string pose_string = poseString(pose.pose) + frameSS.str() ;
-  return pose_string;
-}
 
 
 

@@ -13,7 +13,7 @@ int main(int argc, char **argv)
 {
     ROS_INFO_STREAM("INITIALIZING POSE CONTROLLER NODE");
     // Initialize the ROS Node "line_detection_node"
-    ros::init(argc, argv, "pose_controller_node");
+    ros::init(argc, argv, "pose_controller");
      ros::NodeHandle nh;
     // ros::NodeHandle nh("");
 //    ros::NodeHandle nh("~");

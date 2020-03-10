@@ -44,10 +44,8 @@ public:
 
     ROS_INFO_STREAM("STARTING DYNAMIC RECONFIGURE SERVER");
     startDynamicReconfigureServer();
-//    startPoseSub(dock_frame_);
-    ROS_INFO_STREAM("PoseControllerNode: Subscribing to 'dock_truth'");
     startPub();
-    startPoseSub("dock_pose_gazebo");
+    startPoseSub();
     ros::Duration time_step_duration(time_step_);
     time_step_duration_ = time_step_duration;
 
@@ -84,6 +82,9 @@ public:
   bool publish_twist_;
   double goal_dist_tolerance_;
   double goal_orientation_tolerance_;
+  std::string dock_pose_topic_;
+  std::string dock_gazebo_pose_topic_;
+  bool use_calculated_pose_;
 
   //! Control System Variables
   double goalDist_;
@@ -120,18 +121,30 @@ public:
     publish_twist_ = config.publish_twist;
     goal_orientation_tolerance_ = config.goal_orientation_tolerance;
     goal_dist_tolerance_ = config.goal_dist_tolerance;
+    dock_pose_topic_ = config.dock_pose_topic;
+    dock_gazebo_pose_topic_ = config.dock_gazebo_pose_topic;
+    if(use_calculated_pose_ != config.use_calculated_pose){
+      use_calculated_pose_ = config.use_calculated_pose;
+      startPoseSub();
+    }
   }
 
   void startPub() {
-    cmd_vel_pub_ = nh_.advertise<geometry_msgs::Twist>("docking/cmd_vel", 10);
+    cmd_vel_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 10);
     path_pub_ = nh_.advertise<nav_msgs::Path>("docking/path", 10);
     pose_array_pub_ = nh_.advertise<geometry_msgs::PoseArray>("docking/pose_array", 10);
   }
 
 //  void startPoseSub(std::string& dockPoseTopic)
-  void startPoseSub(std::string dockPoseTopic)
+  void startPoseSub()
   {
-    dockPoseSub_ = nh_.subscribe(dockPoseTopic, 1, &PoseControllerNode::dockPoseCallback, this);
+    if(use_calculated_pose_){
+      ROS_WARN_STREAM("PoseControllerNode: Subscribing to " << dock_pose_topic_);
+      dockPoseSub_ = nh_.subscribe(dock_pose_topic_, 1, &PoseControllerNode::dockPoseCallback, this);
+    } else {
+      ROS_INFO_STREAM("PoseControllerNode: Subscribing to " << dock_gazebo_pose_topic_);
+      dockPoseSub_ = nh_.subscribe(dock_gazebo_pose_topic_, 1, &PoseControllerNode::dockPoseCallback, this);
+    }
   }
 
   void clearGlobals(){
@@ -162,8 +175,8 @@ public:
     try {
       ROS_INFO_STREAM("ORIGINAL TARGET POSE MSG" << poseString(targetPose));
 //      ROS_INFO_STREAM(targetPose);
-//      ROS_INFO_STREAM("TRANSFORMING TARGET POSE FROM " << targetPose.header.frame_id << " TO " << robotFrameID);
-//      tfBuffer_.transform(targetPose,base2TargetPose,robotFrameID);
+      ROS_INFO_STREAM("TRANSFORMING TARGET POSE FROM " << targetPose.header.frame_id << " TO " << robotFrameID);
+      tfBuffer_.transform(targetPose,base2TargetPose,robotFrameID);
       base2TargetPose = targetPose;
       base2TargetPose.header.frame_id = robotFrameID;
       syncTFData(base2TargetPose,base2TargetTF,base2TargetTFMsg,targetFrameID);
@@ -210,7 +223,7 @@ public:
       return true;
     }
 
-//    // Add initial robot pose to plan
+    // Add initial robot pose to plan
     addtoPlan(base2ProjectionPose,zeroTwist);
 
     while(goalDist > goal_dist_tolerance_){
@@ -321,7 +334,7 @@ public:
 //      std::cout << std::endl;
     }
 
-    ROS_WARN_STREAM("WITHIN GOAL DISTANCE TOLERANCE OF" << goal_dist_tolerance_);
+    ROS_WARN_STREAM("COMPLETED TRAJECTORY CALCULATION ");
 
     if(publish_twist_){
       ROS_INFO_STREAM("Publish Twist " << twistString(currentTwist));
@@ -356,24 +369,7 @@ public:
 
   }
 
-  double getDistToGoal(double& x, double& y){
-    double xx = x*x;
-    double yy = y*y;
-    double xxyy = xx + yy;
-    double d = std::sqrt(xxyy);
-    return d;}
-  void getDistToGoal(double& x, double& y, double& goalDist){  goalDist = getDistToGoal(x,y);}
 
-  double getDistBetweenPoses(geometry_msgs::Pose& cp, geometry_msgs::Pose& tp){
-//    ROS_INFO_STREAM("GETTING DISTANCE BETWEEN POSES" << poseString(cp) << poseString(tp));
-    double delta_x = tp.position.x - cp.position.x;
-    double delta_y = tp.position.y - cp.position.y;
-//    ROS_INFO_STREAM("DELTA X " << delta_x << "DELTA X^2 " << (delta_x*delta_x));
-//    ROS_INFO_STREAM("DELTA Y " << delta_y << "DELTA Y^2 " << (delta_y*delta_y));
-    double d = std::sqrt(delta_x*delta_x + delta_y*delta_y);
-//    ROS_INFO_STREAM("DISTANCE BETWEEN POSES " << d);
-    return d;
-  }
 
 // ******************************** DELTA ********************************
 
@@ -450,43 +446,7 @@ public:
 //  }
 
 
-  double getYaw(geometry_msgs::Quaternion& qMsg){
-    ROS_INFO_STREAM("Getting Yaw from Quaternion" << quaternionString(qMsg));
-    tf::Quaternion qTF;
-    tf::quaternionMsgToTF(qMsg, qTF);
-    ROS_INFO_STREAM("Quaternion TF" << quaternionString(qTF)); //printTFQuarternion(qTF);
-    qTF.normalize();
-    ROS_INFO_STREAM("Quaternion TF Normalized" << quaternionString(qTF)); //printTFQuarternion(qTF);
-//    double yaw = angles::normalize_angle(tf::getYaw(qTF));
-    double yaw = tf::getYaw(qTF);
-    ROS_INFO_STREAM("Finished Getting Yaw from Quaternion YAW: " << yaw);
-    return yaw;
-  }
 
-//  double getYaw(geometry_msgs::Pose& poseMsg){
-//    ROS_INFO_STREAM("Getting Yaw from Pose" << poseString(poseMsg));
-//    tf::Pose poseTF;
-//    tf::poseMsgToTF(poseMsg, poseTF);
-//    double yaw = tf::getYaw(poseTF.getRotation());
-//    ROS_INFO_STREAM("Finished Getting Yaw from Pose YAW: " << yaw);
-//    tf2::Quaternion qTF;
-//    tf2::convert(poseMsg.orientation , qTF);
-//    yaw = tf2::getYaw(qTF);
-//    ROS_INFO_STREAM("Finished Getting Yaw from Quaternion YAW: " << yaw);
-//    return yaw;
-//  }
-
-  geometry_msgs::Quaternion getQuaternion(double& yaw){
-    ROS_INFO_STREAM("Getting Quaternion from Yaw: " << yaw);
-    tf::Quaternion qTF = tf::createQuaternionFromYaw(yaw);
-    ROS_INFO_STREAM("Quaternion TF" << quaternionString(qTF)); //printTFQuarternion(qTF);
-    qTF.normalize();
-    ROS_INFO_STREAM("Quaternion TF Normalized" << quaternionString(qTF)); //printTFQuarternion(qTF);
-    geometry_msgs::Quaternion qMsg;
-    tf::quaternionTFToMsg(qTF, qMsg);
-    ROS_INFO_STREAM("Finished Getting Quaternion from Yaw" << quaternionString(qMsg));
-    return qMsg;
-  }
 
   double getCurvature(double& goalDist, double& deltaAngle, double& deltaControl, double& phi){
     ROS_INFO_STREAM("Getting Curvature");
@@ -526,21 +486,21 @@ public:
     ROS_INFO_STREAM("GETTING LEFT = " << kDelta_ << " * " << z << " = " << left);
 
     rightDenom = 1 + ( (kPhi_*phi)*(kPhi_*phi) );
-    ROS_INFO_STREAM("GETTING RIGHT DENOM = 1 + (" << (kPhi_*phi) << " * " << (kPhi_*phi) << ") = " << rightDenom);
+//    ROS_INFO_STREAM("GETTING RIGHT DENOM = 1 + (" << (kPhi_*phi) << " * " << (kPhi_*phi) << ") = " << rightDenom);
 
     right = kPhi_ / rightDenom;
-    ROS_INFO_STREAM("GETTING RIGHT = " << kPhi_ << " / " << rightDenom << " = " << right);
-    ROS_INFO_STREAM("GETTING RIGHT = " << 1 << " + " << right << " = " << (1 + right));
+//    ROS_INFO_STREAM("GETTING RIGHT = " << kPhi_ << " / " << rightDenom << " = " << right);
+//    ROS_INFO_STREAM("GETTING RIGHT = " << 1 << " + " << right << " = " << (1 + right));
     right = 1 + right;
-    ROS_INFO_STREAM("GETTING RIGHT = " << right << " * sin(" << deltaAngle << ") = " << right << " * " << sin(deltaAngle) << " = " << (right * sin(deltaAngle)));
+//    ROS_INFO_STREAM("GETTING RIGHT = " << right << " * sin(" << deltaAngle << ") = " << right << " * " << sin(deltaAngle) << " = " << (right * sin(deltaAngle)));
     right = right * sin(deltaAngle);
 
 
     omega = left + right;
     ROS_INFO_STREAM("GETTING OMEGA = " << left << " + " << right << " = " << omega);
-    ROS_INFO_STREAM("GETTING OMEGA = " << omega << " * (-1) = " << ((-1) * omega) );
+//    ROS_INFO_STREAM("GETTING OMEGA = " << omega << " * (-1) = " << ((-1) * omega) );
     omega = (-1) * omega;
-    ROS_INFO_STREAM("GETTING OMEGA = " << omega << " / " << goalDist << " = " << (omega / goalDist));
+//    ROS_INFO_STREAM("GETTING OMEGA = " << omega << " / " << goalDist << " = " << (omega / goalDist));
     omega = omega / goalDist;
     ROS_INFO_STREAM("GETTING OMEGA = " << omega << " * " << lin_vel_min_ << " = " << (omega *lin_vel_min_));
     omega = omega * lin_vel_min_;
@@ -626,26 +586,6 @@ public:
 //    ROS_INFO_STREAM("DELTA TF (Qua calc)" << poseString(poseDelta.pose)  << " YAW: " << yawDelta);
   }
 
-  void updateTargetPose(geometry_msgs::PoseStamped& r, geometry_msgs::PoseStamped& t){
-    ROS_INFO_STREAM("Updating Target Pose");
-    t.header.stamp = r.header.stamp;
-    t.pose.position.x -= r.pose.position.x;
-    t.pose.position.y -= r.pose.position.y;
-    double rYaw = getYaw(r.pose.orientation);
-    double tYaw = getYaw(t.pose.orientation);
-    tYaw -= rYaw;
-    t.pose.orientation = getQuaternion(tYaw);
-//    t.pose.orientation.z -= r.pose.orientation.z;
-//    t.pose.orientation.w -= r.pose.orientation.w;
-//    ROS_INFO_STREAM("Target Pose: Quaternion Msg" << t.pose.orientation);
-//    tf::Quaternion qTF;
-//    tf::quaternionMsgToTF(t.pose.orientation, qTF);
-//    ROS_INFO_STREAM("Target Pose: Quaternion TF" << qTF);
-//    qTF.normalize();
-//    ROS_INFO_STREAM("Target Pose: Quaternion TF Normalized" << qTF);
-//    tf::quaternionTFToMsg(qTF, t.pose.orientation);
-//    ROS_INFO_STREAM("Finished Updating Target Pose");
-  }
 
   tf2::Transform getProjectionToTargetTF(tf2::Transform& base2Proj, tf2::Transform& base2Target){
     // AtoC = AtoB * BtoC;
@@ -654,49 +594,6 @@ public:
     proj2Target = proj2Base * base2Target;
     ROS_INFO_STREAM("GETTING TF FROM PROJECTION TO TARGET " << transformString(proj2Target));
     return proj2Target;
-  }
-
-  void syncTFData(tf2::Transform& tf2, geometry_msgs::TransformStamped& tfMsg, geometry_msgs::PoseStamped& poseStamped, std::string frameID, std::string childFrameID)
-  {
-//    ROS_INFO_STREAM("SYNCING TF --> TF MSF and POSE" << transformString(tf2));
-    // tf2 to tfMSG
-    tf2::convert(tf2,tfMsg.transform);
-    tfMsg.header.frame_id = frameID;
-    tfMsg.child_frame_id = childFrameID;
-    tfMsg.header.stamp = ros::Time::now();
-//    ROS_INFO_STREAM("SYNCING TF MSG FROM TF " << transformString(tfMsg));
-    // tf2 to Pose
-    tf2::toMsg(tf2,poseStamped.pose);
-    poseStamped.header.frame_id = frameID;
-    poseStamped.header.stamp = tfMsg.header.stamp;
-//    ROS_INFO_STREAM("SYNCING POSE FROM TF " << poseString(poseStamped));
-  }
-
-  void syncTFData(geometry_msgs::TransformStamped& tfMsg, tf2::Transform& tf2, geometry_msgs::PoseStamped& poseStamped)
-  {
-//    ROS_INFO_STREAM("SYNCING TF MSG --> TF and POSE" << transformString(tfMsg));
-    // tfMSG to tf2
-    tf2::convert(tfMsg.transform,tf2);
-//    ROS_INFO_STREAM("SYNCING TF FROM TF MSG" << transformString(tf2));
-    // tf2 to Pose
-    tf2::toMsg(tf2,poseStamped.pose);
-    poseStamped.header.stamp = tfMsg.header.stamp;
-    poseStamped.header.frame_id = tfMsg.header.frame_id;
-//    ROS_INFO_STREAM("SYNCING POSE FROM TF MSG" << poseString(poseStamped));
-  }
-
-  void syncTFData(geometry_msgs::PoseStamped& poseStamped, tf2::Transform& tf2, geometry_msgs::TransformStamped& tfMsg, std::string childFrameID)
-  {
-//    ROS_INFO_STREAM("SYNCING POSE --> TF and TF MSG " << poseString(poseStamped));
-    // pose to tf2
-    tf2::fromMsg(poseStamped.pose,tf2);
-//    ROS_INFO_STREAM("SYNCING TF FROM POSE " << transformString(tf2));
-    // tf2 to TFMsg
-    tf2::convert(tf2,tfMsg.transform);
-    tfMsg.header.frame_id = poseStamped.header.frame_id;
-    tfMsg.child_frame_id = childFrameID;
-    tfMsg.header.stamp = poseStamped.header.stamp;
-//    ROS_INFO_STREAM("SYNCING TF MSG FROM POSE " << transformString(tfMsg));
   }
 
 };
