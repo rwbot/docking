@@ -322,9 +322,13 @@ void ClusterPoints(pcl::PointCloud<pcl::PointXYZRGB>::Ptr inCloud, docking::Clus
   ec.setInputCloud(inCloud);
   ec.extract(cluster_indices);
 
-  //        std::cout << "CLUSTERING: " << cluster_indices.size() << "
-  //        clusters found" << std::endl;
+
 //    ROS_INFO_STREAM("CLUSTERING: " << cluster_indices.size()<< " clusters found");
+  if(cluster_indices.size() == 0){
+//    ROS_WARN_STREAM("CLUSTERING: NO CLUSTERS FOUND ");
+    return;
+  }
+
 
   std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clustersPCLVector;
   int i = 0;

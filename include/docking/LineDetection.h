@@ -177,14 +177,14 @@ public:
   /////////////////////////////////////////////////////////////////////////////////////
 
   ///////////////// BEGIN RANSAC LINE ON CLUSTERS /////////////////
-  void getRansacLinesOnCluster(docking::ClusterArray clusters, docking::LineArray::Ptr linesPtr) {
+  void getRansacLinesOnCluster(docking::ClusterArray::Ptr clustersPtr, docking::LineArray::Ptr linesPtr) {
     docking::LineArray lines;
 
-    if(clusters.clusters.size() == 0){
-      ROS_INFO_STREAM("RAN-CLUS-- WARNING: NO CLUSTERS AVAILABLE");
+    if(clustersPtr->clusters.size() == 0){
+      ROS_WARN_STREAM("RAN-CLUS-- WARNING: NO CLUSTERS AVAILABLE");
 //      return lines;
     } else {
-//      ROS_INFO_STREAM("RAN-CLUS-- " << clusters.clusters.size() << " AVAILABLE CLUSTERS");
+      ROS_INFO_STREAM("RAN-CLUS-- " << clustersPtr->clusters.size() << " AVAILABLE CLUSTERS");
     }
 
     //        ROS_INFO_STREAM("lines.combinedCloud.frame_id " <<
@@ -197,10 +197,10 @@ public:
     int lineID = 0;
 
     // Iterate through clusters
-    for (std::vector<docking::Cluster>::iterator cit = clusters.clusters.begin();
-         cit != clusters.clusters.end(); cit++)
+    for (std::vector<docking::Cluster>::iterator cit = clustersPtr->clusters.begin();
+         cit != clustersPtr->clusters.end(); cit++)
     {
-
+        int clusterLineID = 0;
 //        ROS_INFO_STREAM("RAN-CLUS--RANSACING THROUGH CLUSTER ID " << cit->clusterID.data);
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudPCLPtr(new pcl::PointCloud<pcl::PointXYZRGB>());
         pcl::fromROSMsg(cit->cloud, *cloudPCLPtr);
@@ -213,21 +213,19 @@ public:
 
 
         for (std::vector<docking::Line>::iterator clit = currentLines.lines.begin();
-             clit != currentLines.lines.end(); clit++, lineID++)
+             clit != currentLines.lines.end(); clit++, lineID++, clusterLineID++)
         {
 //            ROS_INFO_STREAM("RAN-CLUS--ADDING DETECTED LINE ID " << lineID);
 //            currentLines.lines.at(lineID).clusterID = cit->clusterID;
             clit->clusterID = cit->clusterID;
-//            currentLines.lines.at(lineID).lineID.data = lineID;
-//            clit->clusterID = cit->clusterID;
-//            lines.lines.push_back(currentLines.lines.at(lineID));
+            currentLines.lines.at(clusterLineID).lineID.data = lineID;
             lines.lines.push_back(*clit);
 
             cit->lines.lines.push_back(*clit);
-
         }
 
 //        ROS_INFO_STREAM("RAN-CLUS--COMBINING CLOUDS OF DETECTED LINES FROM CLUSTER ID " << cit->clusterID.data);
+//        ROS_INFO_STREAM("RAN-CLUS--CLUSTER ID " << cit->clusterID.data << " HAS " << cit->lines.lines.size() << " LINES");
         pcl::PointCloud<pcl::PointXYZRGB> currentLinesCloudPCL;
         pcl::fromROSMsg(currentLines.combinedCloud, currentLinesCloudPCL);
         linesCombinedPCL = linesCombinedPCL + currentLinesCloudPCL;

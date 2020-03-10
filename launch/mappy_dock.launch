@@ -6,8 +6,8 @@
     <arg name="dock_YAW" default="0.5"/>
 
 
-    <!-- <arg name="world_name" default="worlds/empty.world"/> -->
-    <arg name="world_name" value="$(find docking)/worlds/obstacles.world"/>
+    <arg name="world_name" default="worlds/empty.world"/>
+    <!-- <arg name="world_name" value="$(find docking)/worlds/obstacles.world"/> -->
     <!-- <arg name="world_name" value="$(find docking)/worlds/demo.world"/> -->
 
     <include file="$(find dockbot)/launch/dock.launch">

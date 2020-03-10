@@ -104,10 +104,6 @@ public:
   //! Dynamic reconfigure server.
   dynamic_reconfigure::Server<docking::SegmentLineConfig> dr_srv_;
 
-  //! Input PCL Cloud
-  pcl::PointCloud<pcl::PointXYZRGB> scanCloudPCL_;
-  //! Input PCL Cloud Pointer
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr scanCloudPCLPtr_(pcl::PointCloud<pcl::PointXYZRGB> scanCloudPCL_);
   //! Target Dock PCL Cloud Pointer
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr dockTargetPCLPtr_;
 
@@ -402,22 +398,20 @@ public:
 
 
   void cloudCallback(const sensor_msgs::PointCloud2ConstPtr &msg) {
+    ROS_INFO_STREAM("CLOUD CALLBACK: CALLBACK CALLED ");
+
+    if(msg->width == 0 || msg->row_step == 0){
+      ROS_WARN_STREAM("CALLBACK: POINT CLOUD MSG EMPTY ");
+      return;
+    }
 
     clearGlobals();
 
     header_ = msg->header;
     linesPtr_->header = clustersPtr_->header = clusters_.header = segments_.header = lines_.header = lines_marker_.header = header_;
 
-  static tf2_ros::TransformBroadcaster tfbr;
+  static tf2_ros::TransformBroadcaster tfbr;   
 
-
-//    clustersPtr_. = &clusters_;
-//    clustersPtr_.reset(clusters_);
-//    pcl::PointCloud<pcl::PointXYZRGB>::Ptr dockTargetPCLPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
-
-    ROS_INFO_STREAM("CLOUD CALLBACK: CALLBACK CALLED ");
-
-//    printDebugCloud(dockTargetPCLPtr_);
 
     // Container for original & filtered data
     /*
@@ -425,8 +419,11 @@ public:
      */
     pcl::PointCloud<pcl::PointXYZRGB> cloudPCL;
     pcl::fromROSMsg(*msg, cloudPCL);
-    pcl::fromROSMsg(*msg, scanCloudPCL_);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudPCLPtr(new pcl::PointCloud<pcl::PointXYZRGB>(cloudPCL));
+    if(cloudPCLPtr->size() == 0){
+      ROS_WARN_STREAM("CALLBACK: PCL POINT CLOUD EMPTY ");
+      return;
+    }
 
     /* ========================================
      * VOXEL DOWNSAMPLING
@@ -443,6 +440,10 @@ public:
     Clustering clustering;
     clustering.setHeader(header_);
     clustering.ClusterPoints(cloudPCLPtr, clustersPtr_, EC_cluster_tolerance_, EC_min_size_, EC_max_size_);
+    if(clustersPtr_->clusters.size() == 0){
+      ROS_WARN_STREAM("CALLBACK: NO CLUSTERS FOUND ");
+      return;
+    }
 
 //    ROS_INFO_STREAM("CLOUD CALLBACK: CLUSTERING RETURNED " << clustersPtr_->clusters.size() << " CLUSTERS");
 
@@ -461,7 +462,9 @@ public:
       /* ========================================
        * RANSAC LINES FROM CLUSTERS
        * ========================================*/
-    lineDetection.getRansacLinesOnCluster(*clustersPtr_, linesPtr_);
+    if(clustersPtr_->clusters.size() > 0){
+      lineDetection.getRansacLinesOnCluster(clustersPtr_, linesPtr_);
+    }
 //      ROS_INFO_STREAM("CLOUD CALLBACK: CALLING RANSAC ON CLUSTERED CLOUD ");
 
 //    ROS_INFO_STREAM("CLOUD CALLBACK: RAN-CLUS-- COMPLETE");
@@ -508,7 +511,6 @@ public:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr ICPInputCloudPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr ICPOutCloudPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
     docking::Cluster::Ptr dockClusterPtr(new docking::Cluster());
-//    ICP(ICPInputCloudPtr, dockTargetPCLPtr_, ICPOutCloudPtr);
     PoseEstimation poseEstimation;
     poseEstimation.setHeader(header_);
     poseEstimation.setICPScore(ICP_min_score_);
@@ -534,8 +536,8 @@ public:
       dockClusterPtr->icp.transformStamped.header.frame_id = laser_frame_;
       dockClusterPtr->icp.transformStamped.child_frame_id = "dock";
       tfbr.sendTransform(dockClusterPtr->icp.transformStamped);
+      icp_target_pub_.publish(dockTargetPCLPtr_);
     }
-    icp_target_pub_.publish(dockTargetPCLPtr_);
 
 
     ROS_INFO_STREAM("CLOUD CALLBACK: CALLBACK COMPLETE");

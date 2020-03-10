@@ -8,3 +8,4 @@ docking/LineArray lines
 docking/ICP icp
 sensor_msgs/PointCloud2 icpCombinedCloud
 std_msgs/Bool isDock
+std_msgs/Bool potentialDock

@@ -20,7 +20,7 @@
 #include  <tf2/impl/convert.h>
 #include  <tf2/transform_datatypes.h>
 #include <geometry_msgs/TransformStamped.h>
-
+#include <math.h>
 
 //void printTF2Matrix(tf2::Matrix3x3 tf2m){
 //  tf2::Vector3 r0 = tf2m.getRow(0);
@@ -125,19 +125,30 @@ geometry_msgs::TransformStamped Matrix4TFtoTransform(Eigen::Matrix4f m4f){
 
 
 double getAngle(docking::Line l1, docking::Line l2){
-  double angle;
+
   pcl_msgs::ModelCoefficients lmc1 = l1.coefficients;
+//  ROS_WARN_STREAM("GET_ANGLE-- COEF 1 " << l1.coefficients);
+//  ROS_WARN_STREAM("GET_ANGLE-- START/END 1 " << l1.segment);
   pcl::ModelCoefficients pmc1;
   pcl_conversions::toPCL(lmc1, pmc1);
-  Eigen::Vector4f lv1 = toEigen(pmc1);
+  tf2::Vector3 tf2v1(pmc1.values[3],pmc1.values[4],pmc1.values[5]);
+//  ROS_WARN_STREAM("GET_ANGLE-- TF2 Vec 1 tf2v1.x() " <<  tf2v1.x() << " tf2v1.y() " << tf2v1.y() << " tf2v1.z() " << tf2v1.z());
 
   pcl_msgs::ModelCoefficients lmc2 = l2.coefficients;
+//  ROS_WARN_STREAM("GET_ANGLE-- COEF 2 " << l2.coefficients);
+//  ROS_WARN_STREAM("GET_ANGLE-- START/END 2 " << l2.segment);
   pcl::ModelCoefficients pmc2;
   pcl_conversions::toPCL(lmc2, pmc2);
-  Eigen::Vector4f lv2 = toEigen(pmc2);
+  tf2::Vector3 tf2v2(pmc2.values[3],pmc2.values[4],pmc2.values[5]);
+//  ROS_WARN_STREAM("GET_ANGLE-- TF2 Vec 2 tf2v2.x() " <<  tf2v2.x() << " tf2v2.y() " << tf2v2.y() << " tf2v2.z() " << tf2v2.z());
 
-  pcl::getAngle3D(lv1, lv2);
-  return angle;
+  double angleRad, angleDeg;
+  angleRad = tf2::tf2Angle(tf2v1,tf2v2);
+  angleRad = fabs(angleRad);
+  angleDeg = angleRad * (180/M_PI);
+
+//  ROS_WARN_STREAM("GET_ANGLE-- ANGLE DEG " << angleDeg << " RAD " << angleRad);
+  return angleDeg;
 }
 
 geometry_msgs::Point pointPCLToMSG(pcl::PointXYZ point) {

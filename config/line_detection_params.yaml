@@ -1,5 +1,5 @@
 RS_max_iter:            250
-RS_min_inliers:         10
+RS_min_inliers:         5
 RS_dist_thresh:         0.01
 RANSAC_on_clusters:     True
 
