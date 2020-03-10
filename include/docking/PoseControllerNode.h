@@ -81,6 +81,9 @@ public:
   int path_steps_;
   double time_step_;
   ros::Duration time_step_duration_;
+  bool publish_twist_;
+  double goal_dist_tolerance_;
+  double goal_orientation_tolerance_;
 
   //! Control System Variables
   double goalDist_;
@@ -114,6 +117,9 @@ public:
     lin_vel_max_ = config.v;
     path_steps_ = config.path_steps;
     time_step_ = config.time_step;
+    publish_twist_ = config.publish_twist;
+    goal_orientation_tolerance_ = config.goal_orientation_tolerance;
+    goal_dist_tolerance_ = config.goal_dist_tolerance;
   }
 
   void startPub() {
@@ -143,7 +149,7 @@ public:
   bool calculatePlan(geometry_msgs::PoseStamped& targetPose){
     std::cout << std::endl;
     clearGlobals();
-    geometry_msgs::Twist twist;
+    geometry_msgs::Twist twist, currentTwist, zeroTwist;
     int steps = 0;
 
     ROS_INFO_STREAM("**************** BEGINNING CALCULATING PLAN ****************");
@@ -198,16 +204,16 @@ public:
     ROS_INFO_STREAM("GETTING DISTANCE TO GOAL: " << goalDist);
 
     // If within distance tolerance, return true
-    if (goalDist < 0.01)
+    if (goalDist < goal_dist_tolerance_)
     {
-      ROS_INFO_STREAM("WITHIN DISTANCE TOLERANCE. GOAL REACHED");
+      ROS_WARN_STREAM("WITHIN DISTANCE TOLERANCE. GOAL REACHED");
       return true;
     }
 
 //    // Add initial robot pose to plan
-    addtoPlan(base2ProjectionPose,twist);
+    addtoPlan(base2ProjectionPose,zeroTwist);
 
-    while(goalDist > 0.01){
+    while(goalDist > goal_dist_tolerance_){
 
       if(steps > path_steps_){
         break;
@@ -276,6 +282,9 @@ public:
 //      twist.linear.x = v;
       twist.angular.z = omega;
       twist.linear.x = lin_vel_min_;
+      if(steps == 0){
+        currentTwist = twist;
+      }
 
 
       ROS_INFO_STREAM("ADDING POSE TO PLAN" << poseString(base2ProjectionPose.pose));
@@ -312,6 +321,12 @@ public:
 //      std::cout << std::endl;
     }
 
+    ROS_WARN_STREAM("WITHIN GOAL DISTANCE TOLERANCE OF" << goal_dist_tolerance_);
+
+    if(publish_twist_){
+      ROS_INFO_STREAM("Publish Twist " << twistString(currentTwist));
+      cmd_vel_pub_.publish(currentTwist);
+    }
     twist.linear.x = twist.angular.z = 0.0;
     addtoPlan(base2TargetPose,twist);
 
