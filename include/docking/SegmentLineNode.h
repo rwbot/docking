@@ -28,6 +28,7 @@
 
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
+#include <pcl_ros/transforms.h>
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/String.h>
@@ -74,7 +75,8 @@
 class SegmentLineNode {
 ///////////////// BEGIN VARIABLES /////////////////
 public:
-  SegmentLineNode(ros::NodeHandle nh) : nh_(nh) {
+  SegmentLineNode(ros::NodeHandle nh) :
+    nh_(nh), tfListener_(tfBuffer_) {
     startDynamicReconfigureServer();
     initParams();
     startPub();
@@ -103,6 +105,10 @@ public:
   ros::NodeHandle nh_;
   //! Dynamic reconfigure server.
   dynamic_reconfigure::Server<docking::SegmentLineConfig> dr_srv_;
+
+  tf2_ros::Buffer tfBuffer_;
+  tf2_ros::TransformListener tfListener_;
+  tf2_ros::TransformBroadcaster tfBroadcaster_;
 
   //! Target Dock PCL Cloud Pointer
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr dockTargetPCLPtr_;
@@ -405,7 +411,8 @@ public:
       return;
     }
 
-    clearGlobals();
+
+   clearGlobals();
 
     header_ = msg->header;
     linesPtr_->header = clustersPtr_->header = clusters_.header = segments_.header = lines_.header = lines_marker_.header = header_;
@@ -533,12 +540,37 @@ public:
       jsk_bbox_pub_.publish(clustering.bboxToJSK(dockClusterPtr->bbox));
 
       dockClusterPtr->icp.transformStamped.header.stamp = ros::Time::now();
-      dockClusterPtr->icp.transformStamped.header.frame_id = laser_frame_;
+      dockClusterPtr->icp.transformStamped.header.frame_id = msg->header.frame_id;
       dockClusterPtr->icp.transformStamped.child_frame_id = "dock";
-      tfbr.sendTransform(dockClusterPtr->icp.transformStamped);
+//      tfbr.sendTransform(dockClusterPtr->icp.transformStamped);
+      tfBroadcaster_.sendTransform(dockClusterPtr->icp.transformStamped);
       icp_target_pub_.publish(dockTargetPCLPtr_);
     }
 
+    ////////////////////////////////////////////////////////////////////
+    // TRANSFORM
+    ////////////////////////////////////////////////////////////////////
+    /// \brief ROS_INFO_STREAM
+    /////    tfBuffer_.transform(targetPose,base2TargetPose,robotFrameID);
+    //    sensor_msgs::PointCloud2::ConstPtr recent_cloud = ros::topic::waitForMessage<sensor_msgs::PointCloud2>(topic, nh);
+//        geometry_msgs::TransformStamped laser_to_base_link;
+//        sensor_msgs::PointCloud2::Ptr transformed_cloud (new sensor_msgs::PointCloud2());
+//        *transformed_cloud = *msg;
+
+
+//    //    ROS_INFO_STREAM("CLOUD CALLBACK: ORIGINAL SENSOR_MSGS::POINTCLOUD2" << *transformed_cloud);
+//        try {
+//          laser_to_base_link = tfBuffer_.lookupTransform(msg->header.frame_id, "base_link", ros::Time(0), ros::Duration(1.0));
+//    //      tfBuffer_.transform(msg,transformed_cloud,"base_link");
+//          pcl_ros::transformPointCloud("base_link", laser_to_base_link.transform, *msg,  *transformed_cloud);
+//    //      ROS_INFO_STREAM("CLOUD CALLBACK: TRANSFORMED SENSOR_MSGS::POINTCLOUD2" << *transformed_cloud);
+
+//        }
+//        catch (tf::TransformException ex) {
+//          ROS_ERROR("%s",ex.what());
+//        }
+
+//        debug_pub_.publish(transformed_cloud);
 
     ROS_INFO_STREAM("CLOUD CALLBACK: CALLBACK COMPLETE");
     std::cout << std::endl;
