@@ -46,12 +46,11 @@ public:
     startDynamicReconfigureServer();
     startPub();
     startPoseSub();
-    ros::Duration time_step_duration(time_step_);
-    time_step_duration_ = time_step_duration;
-
-    plan_.header.frame_id = plan_.path.header.frame_id = plan_.poseArray.header.frame_id = "base_link";
+    initGlobals();
   }
-  ~PoseControllerNode(){}
+  ~PoseControllerNode(){
+    cmd_vel_pub_.publish(zeroTwist_);
+  }
 
   ros::NodeHandle nh_;
   ros::Publisher cmd_vel_pub_;  // Publisher of commands
@@ -61,7 +60,6 @@ public:
   tf2_ros::Buffer tfBuffer_;
   tf2_ros::TransformListener tfListener_;
   tf2_ros::TransformBroadcaster tfBroadcaster_;
-//  tf::TransformListener tfListener_;
   docking::Plan plan_;
 
   //! Dynamic reconfigure server.
@@ -85,6 +83,9 @@ public:
   std::string dock_pose_topic_;
   std::string dock_gazebo_pose_topic_;
   bool use_calculated_pose_;
+//  int frequency_;
+//  ros::Rate frequencyRate_;
+  double entrance_dist_;
 
   //! Control System Variables
   double goalDist_;
@@ -95,6 +96,7 @@ public:
   double v_;
   double omega_;
   double omegaBounded_;
+  geometry_msgs::Twist zeroTwist_;
 
 
   // Declaration and Definition
@@ -123,6 +125,8 @@ public:
     goal_dist_tolerance_ = config.goal_dist_tolerance;
     dock_pose_topic_ = config.dock_pose_topic;
     dock_gazebo_pose_topic_ = config.dock_gazebo_pose_topic;
+//    frequency_ = config.frequency;
+    entrance_dist_ = config.entrance_dist;
     if(use_calculated_pose_ != config.use_calculated_pose){
       use_calculated_pose_ = config.use_calculated_pose;
       startPoseSub();
@@ -147,6 +151,15 @@ public:
     }
   }
 
+  void initGlobals(){
+    ros::Duration time_step_duration(time_step_);
+    time_step_duration_ = time_step_duration;
+//    ros::Rate frequencyRate(frequency_);
+//    frequencyRate_ = frequencyRate;
+    plan_.header.frame_id = plan_.path.header.frame_id = plan_.poseArray.header.frame_id = "base_link";
+    zeroTwist_.linear.x = zeroTwist_.angular.z = 0.0;
+  }
+
   void clearGlobals(){
     plan_.path.poses.clear();
     plan_.poseArray.poses.clear();
@@ -162,26 +175,47 @@ public:
   bool calculatePlan(geometry_msgs::PoseStamped& targetPose){
     std::cout << std::endl;
     clearGlobals();
-    geometry_msgs::Twist twist, currentTwist, zeroTwist;
+    geometry_msgs::Twist twist, currentTwist;
     int steps = 0;
 
     ROS_INFO_STREAM("**************** BEGINNING CALCULATING PLAN ****************");
-    tf2::Transform base2ProjectionTF, robotTF, base2TargetTF, proj2TargetTF, deltaTF;
-    geometry_msgs::TransformStamped base2ProjectionTFMsg, robotTFMsg, base2TargetTFMsg, proj2TargetTFMsg, deltaTFMsg;
-    geometry_msgs::PoseStamped base2ProjectionPose, robotPose, base2TargetPose, proj2TargetPose, deltaTFPose;
-    std::string projectionFrameID="projection", robotFrameID="base_link", targetFrameID="target";
+    tf2::Transform base2ProjectionTF, robotTF, base2TargetTF, base2EntranceTF, proj2TargetTF, deltaTF;
+    geometry_msgs::TransformStamped base2ProjectionTFMsg, robotTFMsg, base2TargetTFMsg, base2EntranceTFMsg, proj2TargetTFMsg, deltaTFMsg;
+    geometry_msgs::PoseStamped base2ProjectionPose, robotPose, base2TargetPose, base2EntrancePose, proj2TargetPose, deltaTFPose;
+    std::string projectionFrameID="projection", robotFrameID="base_link", targetFrameID="target", entranceFrameID="entrance";
+
+//    Init Base to Projection
+    base2ProjectionTFMsg.header.frame_id = robotFrameID;
+    base2ProjectionTFMsg.child_frame_id = projectionFrameID;
+    base2ProjectionTFMsg.header.stamp = ros::Time::now();
+    base2ProjectionTFMsg.transform.translation.x = base2ProjectionTFMsg.transform.translation.y = base2ProjectionTFMsg.transform.translation.z = 0.0;
+    tf2::Quaternion qProjection;
+    qProjection.setRPY(0, 0, 0);
+    tf2::convert(qProjection,base2ProjectionTFMsg.transform.rotation);
+    syncTFData(base2ProjectionTFMsg,base2ProjectionTF,base2ProjectionPose);
+    ROS_INFO_STREAM("BASE->PROJECTION TF MSG" << transformString(base2ProjectionTFMsg));
+    ROS_INFO_STREAM("BASE->PROJECTION TRANSFORM" << transformString(base2ProjectionTF));
+    ROS_INFO_STREAM("BASE->PROJECTION POSE MSG" << poseString(base2ProjectionPose.pose));
+
+    // Init Base to Entrance
+    base2EntranceTFMsg.header.frame_id = robotFrameID;
+    base2EntranceTFMsg.child_frame_id = entranceFrameID;
+    base2EntranceTFMsg.header.stamp = ros::Time::now();
+    base2EntranceTFMsg.transform.translation.x = entrance_dist_;
+    base2EntranceTFMsg.transform.translation.y = base2EntranceTFMsg.transform.translation.z = 0.0;
+    tf2::Quaternion qEntrance;
+    qEntrance.setRPY(0, 0, 0);
+    tf2::convert(qEntrance,base2ProjectionTFMsg.transform.rotation);
+    syncTFData(base2EntranceTFMsg,base2EntranceTF,base2EntrancePose);
 
     // Transform targetPose into base_link frame
     try {
       ROS_INFO_STREAM("ORIGINAL TARGET POSE MSG" << poseString(targetPose));
-//      ROS_INFO_STREAM(targetPose);
       ROS_INFO_STREAM("TRANSFORMING TARGET POSE FROM " << targetPose.header.frame_id << " TO " << robotFrameID);
       tfBuffer_.transform(targetPose,base2TargetPose,robotFrameID);
-      base2TargetPose = targetPose;
-      base2TargetPose.header.frame_id = robotFrameID;
       syncTFData(base2TargetPose,base2TargetTF,base2TargetTFMsg,targetFrameID);
       ROS_INFO_STREAM("TRANSFORMED BASE->TARGET TF MSG " << transformString(base2TargetTFMsg));
-      ROS_INFO_STREAM("TRANSFORMED BASE->TARGET TRANSFORM " << transformString(base2TargetTF));
+//      ROS_INFO_STREAM("TRANSFORMED BASE->TARGET TRANSFORM " << transformString(base2TargetTF));
       ROS_INFO_STREAM("TRANSFORMED BASE->TARGET POSE MSG " << poseString(base2TargetPose.pose));
 
 //      ROS_INFO_STREAM("TRANSFORM FOUND BETWEEN base_link and " << targetPose.header.frame_id);
@@ -192,26 +226,15 @@ public:
       return false;
     }
 
-//    ROS_INFO_STREAM("CURRENT ROBOT POSE " << projectionPose);
-    base2ProjectionTFMsg.header.frame_id = robotFrameID;
-    base2ProjectionTFMsg.child_frame_id = projectionFrameID;
-    base2ProjectionTFMsg.header.stamp = ros::Time::now();
-    base2ProjectionTFMsg.transform.translation.x = base2ProjectionTFMsg.transform.translation.y = base2ProjectionTFMsg.transform.translation.z = 0.0;
-    tf2::Quaternion q;
-    q.setRPY(0, 0, 0);
-    tf2::convert(q,base2ProjectionTFMsg.transform.rotation);
 
-    syncTFData(base2ProjectionTFMsg,base2ProjectionTF,base2ProjectionPose);
-    ROS_INFO_STREAM("BASE->PROJECTION TF MSG" << transformString(base2ProjectionTFMsg));
-    ROS_INFO_STREAM("BASE->PROJECTION TRANSFORM" << transformString(base2ProjectionTF));
-    ROS_INFO_STREAM("BASE->PROJECTION POSE MSG" << poseString(base2ProjectionPose.pose));
 
+
+    std::cout << std::endl;
 
     proj2TargetTF = getProjectionToTargetTF(base2ProjectionTF,base2TargetTF);
     syncTFData(proj2TargetTF,proj2TargetTFMsg,proj2TargetPose,projectionFrameID,targetFrameID);
 
 
-//    ROS_INFO_STREAM("CURRENT POSE " << targetPose);
     // Distance to goal
     double goalDist = proj2TargetTF.getOrigin().length();
     ROS_INFO_STREAM("GETTING DISTANCE TO GOAL: " << goalDist);
@@ -224,17 +247,17 @@ public:
     }
 
     // Add initial robot pose to plan
-    addtoPlan(base2ProjectionPose,zeroTwist);
+    addtoPlan(base2ProjectionPose,zeroTwist_);
 
     while(goalDist > goal_dist_tolerance_){
 
       if(steps > path_steps_){
+        ROS_WARN_STREAM("FINISHED " << steps << " STEPS");
         break;
       }
 
-      ROS_INFO_STREAM("DIST TO GOAL = " << goalDist << " > 0.01");
+      ROS_INFO_STREAM("DIST TO GOAL = " << goalDist << " < " << goal_dist_tolerance_);
 //      // Orientation base frame relative to r_
-//      // @TODO TODO Make sure this is still valid since the reference robotPose is changing as well
       double deltaAngle;
       deltaAngle = getDeltaAngle(proj2TargetPose.pose.position.y, proj2TargetPose.pose.position.x);
 //      deltaAngle = getDeltaAngle(proj2TargetTF);
@@ -242,16 +265,13 @@ public:
 
 
 //      // Determine orientation of goal frame relative to r_
-      double phi = 69;
-
 //      phi = getPhi(proj2TargetTF);
-
-      phi = tf2::getYaw(proj2TargetTF.getRotation());
-      ROS_INFO_STREAM("PHI =  YAW " << phi << " + delta (" << deltaAngle << ")");
+      double phi = tf2::getYaw(proj2TargetTF.getRotation());
+      ROS_INFO_STREAM("PHI =  YAW (" << phi << ") + delta (" << deltaAngle << ") = " << (phi + deltaAngle));
       phi += deltaAngle;
-      ROS_INFO_STREAM("GETTING PHI " << phi);
+//      ROS_INFO_STREAM("GETTING PHI " << phi);
 
-//      break;
+
 
       // Compute the virtual control
       double deltaControl = getDeltaControl(phi);
@@ -303,7 +323,7 @@ public:
       ROS_INFO_STREAM("ADDING POSE TO PLAN" << poseString(base2ProjectionPose.pose));
       addtoPlan(base2ProjectionPose,twist);
 
-      ROS_INFO_STREAM("STEPPING POSE");
+//      ROS_INFO_STREAM("STEPPING POSE");
       deltaTFMsg = base2ProjectionTFMsg;
 //      syncTFData(deltaTFMsg,deltaTF,deltaTFPose);
       deltaTF = getDeltaTF(base2ProjectionTF,twist);
@@ -313,15 +333,14 @@ public:
       tf2::doTransform(base2ProjectionPose, base2ProjectionPose, deltaTFMsg) ;
       syncTFData(base2ProjectionPose,base2ProjectionTF,base2ProjectionTFMsg,projectionFrameID);
 //      stepPose(base2ProjectionPose,twist);
-      ROS_INFO_STREAM("STEPPED POSE TO " << poseString(base2ProjectionPose.pose));
-
-      ROS_INFO_STREAM("GETTING DISTANCE BETWEEN UPDATED TARGET AND STEPPED POSE");
+      ROS_INFO_STREAM("STEPPED  " << poseString(base2ProjectionPose.pose));
+      ROS_INFO_STREAM("GETTING DISTANCE BETWEEN UPDATED TARGET & STEPPED POSE");
       double oldGoalDist = goalDist;
       proj2TargetTF = getProjectionToTargetTF(base2ProjectionTF,base2TargetTF);
       syncTFData(proj2TargetTF,proj2TargetTFMsg,proj2TargetPose,projectionFrameID,targetFrameID);
       goalDist = proj2TargetTF.getOrigin().length();
       std::ostringstream gdSS;
-      gdSS << std::fixed << std::setprecision(2) << "OLD: " << oldGoalDist << " NEW: " << goalDist;
+      gdSS << std::fixed << std::setprecision(4) << "OLD: " << oldGoalDist << " NEW: " << goalDist;
       ROS_INFO_STREAM("GOAL DISTANCE " << gdSS.str());
 
       ROS_INFO_STREAM("END PATH STEP #" << steps);
@@ -339,9 +358,10 @@ public:
     if(publish_twist_){
       ROS_INFO_STREAM("Publish Twist " << twistString(currentTwist));
       cmd_vel_pub_.publish(currentTwist);
+    } else {
+      cmd_vel_pub_.publish(zeroTwist_);
     }
-    twist.linear.x = twist.angular.z = 0.0;
-    addtoPlan(base2TargetPose,twist);
+    addtoPlan(base2TargetPose,zeroTwist_);
 
     path_pub_.publish(plan_.path);
     pose_array_pub_.publish(plan_.poseArray);
@@ -570,16 +590,20 @@ public:
 
     deltaYaw = t.angular.z * time_step_;
     deltaX = (t.linear.x * cos(deltaYaw)  -  t.linear.y * sin(deltaYaw)) * time_step_;
-    ROS_INFO_STREAM("DELTA X POSITION " << deltaX);
     deltaY = (t.linear.x * sin(deltaYaw)  +  t.linear.y * cos(deltaYaw)) * time_step_;
-    ROS_INFO_STREAM("DELTA Y POSITION " << deltaY);
+
     tf2::Vector3 deltaOrigin(deltaX, deltaY, curTF.getOrigin().getZ());
     deltaTF.setOrigin(deltaOrigin);
     qDelta.setRPY(0,0,deltaYaw);
     deltaTF.setRotation(qDelta);
 
-    ROS_INFO_STREAM("ORIG  TF           " << transformString(curTF) << " YAW: " << yawOld);
-    ROS_INFO_STREAM("DELTA TF (YAW calc)" << transformString(deltaTF)  << " YAW: " << deltaYaw);
+    std::ostringstream positionSS;
+    positionSS << std::fixed << std::setprecision(2) << "DELTA X POSITION " << deltaX << " DELTA Y POSITION " << deltaY  << " ";
+
+    ROS_INFO_STREAM(positionSS.str());
+
+    ROS_INFO_STREAM("ORIG  TF " << transformString(curTF) <<  yawString(yawOld));
+    ROS_INFO_STREAM("DELTA TF " << transformString(deltaTF)  << yawString(deltaYaw));
 
     return deltaTF;
 //    tf2::convert(qDelta, poseDelta.pose.orientation);

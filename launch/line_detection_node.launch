@@ -9,7 +9,8 @@
 <!--                <param name="dock_filepath" value="$(find docking)/pcd/monkey.ply"/>-->
                 <!-- <param name="dock_filepath" value="/home/rwbot/dock_ws/src/docking/pcd/dock_cloud_perfect.pcd"/> -->
 				<!-- <param name="dock_filepath" value="/home/rwbot/dock_ws/src/docking/pcd/dock_crosssection.pcd"/> -->
-				<param name="dock_filepath" value="/home/rwbot/dock_ws/src/docking/pcd/dock_cloud_docked.pcd"/>
+				<!-- <param name="dock_filepath" value="/home/rwbot/dock_ws/src/docking/pcd/dock_cloud_docked.pcd"/> -->
+				<param name="dock_filepath" value="/home/rwbot/dock_ws/src/docking/pcd/dock_cloud_docked_back_origin.pcd"/>
 
 		<rosparam file="$(find docking)/config/line_detection_params.yaml" />
 
