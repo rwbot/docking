@@ -193,9 +193,9 @@ public:
     qProjection.setRPY(0, 0, 0);
     tf2::convert(qProjection,base2ProjectionTFMsg.transform.rotation);
     syncTFData(base2ProjectionTFMsg,base2ProjectionTF,base2ProjectionPose);
-    ROS_INFO_STREAM("BASE->PROJECTION TF MSG" << transformString(base2ProjectionTFMsg));
-    ROS_INFO_STREAM("BASE->PROJECTION TRANSFORM" << transformString(base2ProjectionTF));
-    ROS_INFO_STREAM("BASE->PROJECTION POSE MSG" << poseString(base2ProjectionPose.pose));
+//    ROS_INFO_STREAM("BASE->PROJECTION TF MSG" << transformString(base2ProjectionTFMsg));
+//    ROS_INFO_STREAM("BASE->PROJECTION TRANSFORM" << transformString(base2ProjectionTF));
+//    ROS_INFO_STREAM("BASE->PROJECTION POSE MSG" << poseString(base2ProjectionPose.pose));
 
     // Init Base to Entrance
     base2EntranceTFMsg.header.frame_id = robotFrameID;
@@ -213,6 +213,7 @@ public:
       ROS_INFO_STREAM("ORIGINAL TARGET POSE MSG" << poseString(targetPose));
       ROS_INFO_STREAM("TRANSFORMING TARGET POSE FROM " << targetPose.header.frame_id << " TO " << robotFrameID);
       tfBuffer_.transform(targetPose,base2TargetPose,robotFrameID);
+      base2TargetPose.pose.position.z = 0;
       syncTFData(base2TargetPose,base2TargetTF,base2TargetTFMsg,targetFrameID);
       ROS_INFO_STREAM("TRANSFORMED BASE->TARGET TF MSG " << transformString(base2TargetTFMsg));
 //      ROS_INFO_STREAM("TRANSFORMED BASE->TARGET TRANSFORM " << transformString(base2TargetTF));
@@ -225,15 +226,10 @@ public:
       ROS_ERROR("%s",ex.what());
       return false;
     }
-
-
-
-
     std::cout << std::endl;
 
     proj2TargetTF = getProjectionToTargetTF(base2ProjectionTF,base2TargetTF);
     syncTFData(proj2TargetTF,proj2TargetTFMsg,proj2TargetPose,projectionFrameID,targetFrameID);
-
 
     // Distance to goal
     double goalDist = proj2TargetTF.getOrigin().length();
@@ -256,7 +252,7 @@ public:
         break;
       }
 
-      ROS_INFO_STREAM("DIST TO GOAL = " << goalDist << " < " << goal_dist_tolerance_);
+      ROS_INFO_STREAM("DIST TO GOAL = " << goalDist << " > " << goal_dist_tolerance_);
 //      // Orientation base frame relative to r_
       double deltaAngle;
       deltaAngle = getDeltaAngle(proj2TargetPose.pose.position.y, proj2TargetPose.pose.position.x);
@@ -302,8 +298,8 @@ public:
 //      double omega = curvature * v;
 //      ROS_INFO_STREAM("CALCULATING OMEGA BASED ON CURVATURE " << omega);
 //      // Bound angular velocity
-//      double omegaBounded = std::min(omega_max_, std::max(-omega_max_, omega));
-//      ROS_INFO_STREAM("BOUNDING OMEGA TO  " << omegaBounded);
+      double omegaBounded = std::min(omega_max_, std::max(-omega_max_, omega));
+      ROS_INFO_STREAM("BOUNDING OMEGA TO  " << omegaBounded);
 //      // Make sure that if we reduce w, we reduce v so that curvature is still followed
 //      if (omega != 0.0) {
 //        ROS_INFO_STREAM("OMEGA NOT ZERO ");
@@ -311,10 +307,16 @@ public:
 //        v *= (omegaBounded/omega);
 //      }
 
-//      twist.angular.z = omegaBounded;
+
+      twist.angular.z = omegaBounded;
 //      twist.linear.x = v;
-      twist.angular.z = omega;
       twist.linear.x = lin_vel_min_;
+      ROS_INFO_STREAM("TWIST: " << twistString(twist));
+      if(goalDist < entrance_dist_){
+        twist.linear.x *= 0.25;
+        twist.angular.z *= 0.25;
+        ROS_INFO_STREAM("Approaching Target - Twist Scaled Down To " << twistString(twist));
+      }
       if(steps == 0){
         currentTwist = twist;
       }
