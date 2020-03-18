@@ -56,6 +56,7 @@ public:
   ros::Publisher cmd_vel_pub_;  // Publisher of commands
   ros::Publisher path_pub_;  // Publisher of paths
   ros::Publisher pose_array_pub_;  // Publisher of pose array
+  ros::Publisher twist_array_pub_;  // Publisher of twist array
   ros::Subscriber dockPoseSub_;
   tf2_ros::Buffer tfBuffer_;
   tf2_ros::TransformListener tfListener_;
@@ -137,6 +138,7 @@ public:
     cmd_vel_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 10);
     path_pub_ = nh_.advertise<nav_msgs::Path>("docking/path", 10);
     pose_array_pub_ = nh_.advertise<geometry_msgs::PoseArray>("docking/pose_array", 10);
+    twist_array_pub_ = nh_.advertise<geometry_msgs::PoseArray>("docking/twist_array", 10);
   }
 
 //  void startPoseSub(std::string& dockPoseTopic)
@@ -180,7 +182,7 @@ public:
 
     ROS_INFO_STREAM("**************** BEGINNING CALCULATING PLAN ****************");
     tf2::Transform base2ProjectionTF, robotTF, base2TargetTF, base2EntranceTF, proj2TargetTF, deltaTF;
-    geometry_msgs::TransformStamped base2ProjectionTFMsg, robotTFMsg, base2TargetTFMsg, base2EntranceTFMsg, proj2TargetTFMsg, deltaTFMsg;
+    geometry_msgs::TransformStamped base2ProjectionTFMsg, robotTFMsg, base2TargetTFMsg, base2EntranceTFMsg, proj2TargetTFMsg, deltaTFMsg, tempTFMsg;
     geometry_msgs::PoseStamped base2ProjectionPose, robotPose, base2TargetPose, base2EntrancePose, proj2TargetPose, deltaTFPose;
     std::string projectionFrameID="projection", robotFrameID="base_link", targetFrameID="target", entranceFrameID="entrance";
 
@@ -322,8 +324,8 @@ public:
       }
 
 
-      ROS_INFO_STREAM("ADDING POSE TO PLAN" << poseString(base2ProjectionPose.pose));
-      addtoPlan(base2ProjectionPose,twist);
+//      ROS_INFO_STREAM("ADDING POSE TO PLAN" << poseString(base2ProjectionPose.pose));
+//      addtoPlan(base2ProjectionPose,twist);
 
 //      ROS_INFO_STREAM("STEPPING POSE");
       deltaTFMsg = base2ProjectionTFMsg;
@@ -331,11 +333,14 @@ public:
       deltaTF = getDeltaTF(base2ProjectionTF,twist);
       syncTFData(deltaTF,deltaTFMsg,deltaTFPose,robotFrameID,projectionFrameID);
       deltaTFMsg.header.stamp = base2ProjectionTFMsg.header.stamp + time_step_duration_;
-
+      tempTFMsg = base2ProjectionTFMsg;
       tf2::doTransform(base2ProjectionPose, base2ProjectionPose, deltaTFMsg) ;
       syncTFData(base2ProjectionPose,base2ProjectionTF,base2ProjectionTFMsg,projectionFrameID);
 //      stepPose(base2ProjectionPose,twist);
       ROS_INFO_STREAM("STEPPED  " << poseString(base2ProjectionPose.pose));
+
+
+
       ROS_INFO_STREAM("GETTING DISTANCE BETWEEN UPDATED TARGET & STEPPED POSE");
       double oldGoalDist = goalDist;
       proj2TargetTF = getProjectionToTargetTF(base2ProjectionTF,base2TargetTF);
@@ -345,7 +350,22 @@ public:
       gdSS << std::fixed << std::setprecision(4) << "OLD: " << oldGoalDist << " NEW: " << goalDist;
       ROS_INFO_STREAM("GOAL DISTANCE " << gdSS.str());
 
+      if(goalDist < oldGoalDist){
+        ROS_INFO_STREAM("ADDING POSE TO PLAN" << poseString(base2ProjectionPose.pose));
+        addtoPlan(base2ProjectionPose,twist);
+      } else {
+        ROS_WARN_STREAM("STEPPED POSE INCREASING GOAL DIST ERROR");
+        base2ProjectionTFMsg = tempTFMsg;
+        syncTFData(base2ProjectionTFMsg, base2ProjectionTF, base2ProjectionPose);
+        break;
+      }
+
       ROS_INFO_STREAM("END PATH STEP #" << steps);
+      if(goalDist <= goal_dist_tolerance_){
+        ROS_WARN_STREAM("WITHIN DISTANCE TOLERANCE");
+        break;
+      }
+
       std::cout << "___________________________________________________________________________________________________" << std::endl;
       std::cout << "___________________________________________________________________________________________________" << std::endl << std::endl;
       steps++;
