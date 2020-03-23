@@ -1,4 +1,4 @@
-﻿#ifndef POSECONTROLLERNODE_H
+#ifndef POSECONTROLLERNODE_H
 #define POSECONTROLLERNODE_H
 
 //#include <docking/Headers.h>
@@ -32,6 +32,7 @@
 #include <geometry_msgs/PoseArray.h>
 #include <nav_msgs/Path.h>
 #include <angles/angles.h>
+#include <math.h>
 
 class PoseControllerNode
 {
@@ -75,6 +76,7 @@ public:
   double lambda_;  // ??
   double lin_vel_min_;
   double lin_vel_max_;
+  bool use_steps_;
   int path_steps_;
   double time_step_;
   ros::Duration time_step_duration_;
@@ -84,6 +86,7 @@ public:
   std::string dock_pose_topic_;
   std::string dock_gazebo_pose_topic_;
   bool use_calculated_pose_;
+  int max_steps_;
 //  int frequency_;
 //  ros::Rate frequencyRate_;
   double entrance_dist_;
@@ -122,9 +125,11 @@ public:
     path_steps_ = config.path_steps;
     time_step_ = config.time_step;
     publish_twist_ = config.publish_twist;
+    use_steps_ = config.use_steps;
     goal_orientation_tolerance_ = config.goal_orientation_tolerance;
     goal_dist_tolerance_ = config.goal_dist_tolerance;
     dock_pose_topic_ = config.dock_pose_topic;
+    max_steps_ = config.max_steps;
     dock_gazebo_pose_topic_ = config.dock_gazebo_pose_topic;
 //    frequency_ = config.frequency;
     entrance_dist_ = config.entrance_dist;
@@ -210,9 +215,16 @@ public:
     tf2::convert(qEntrance,base2ProjectionTFMsg.transform.rotation);
     syncTFData(base2EntranceTFMsg,base2EntranceTF,base2EntrancePose);
 
+
+    ROS_INFO_STREAM("ORIGINAL TARGET POSE MSG" << poseString(targetPose));
+    double targetYaw = tf2::getYaw(targetPose.pose.orientation);
+    targetPose.pose.position.x -= entrance_dist_ * cos(targetYaw);
+    targetPose.pose.position.y -= entrance_dist_ * sin(targetYaw);
+    ROS_INFO_STREAM("TARGET POSE MSG + ENTRANCE DISTANCE" << poseString(targetPose));
+
+
     // Transform targetPose into base_link frame
     try {
-      ROS_INFO_STREAM("ORIGINAL TARGET POSE MSG" << poseString(targetPose));
       ROS_INFO_STREAM("TRANSFORMING TARGET POSE FROM " << targetPose.header.frame_id << " TO " << robotFrameID);
       tfBuffer_.transform(targetPose,base2TargetPose,robotFrameID);
       base2TargetPose.pose.position.z = 0;
@@ -236,9 +248,9 @@ public:
     // Distance to goal
     double goalDist = proj2TargetTF.getOrigin().length();
     ROS_INFO_STREAM("GETTING DISTANCE TO GOAL: " << goalDist);
-
+    double deltaAngle = 1.0;
     // If within distance tolerance, return true
-    if (goalDist < goal_dist_tolerance_)
+    if((goalDist < goal_dist_tolerance_) && (fabs(deltaAngle) < goal_orientation_tolerance_))
     {
       ROS_WARN_STREAM("WITHIN DISTANCE TOLERANCE. GOAL REACHED");
       return true;
@@ -247,16 +259,23 @@ public:
     // Add initial robot pose to plan
     addtoPlan(base2ProjectionPose,zeroTwist_);
 
-    while(goalDist > goal_dist_tolerance_){
+    while((goalDist > goal_dist_tolerance_) || (fabs(deltaAngle) > goal_orientation_tolerance_)){
 
-      if(steps > path_steps_){
-        ROS_WARN_STREAM("FINISHED " << steps << " STEPS");
+      if(use_steps_){
+        if(steps > path_steps_){
+          ROS_WARN_STREAM("FINISHED " << steps << " STEPS");
+          break;
+        }
+      }
+
+      if(steps >= max_steps_){
+        ROS_WARN_STREAM("HIT MAXIMUM STEPS " << steps );
         break;
       }
 
       ROS_INFO_STREAM("DIST TO GOAL = " << goalDist << " > " << goal_dist_tolerance_);
 //      // Orientation base frame relative to r_
-      double deltaAngle;
+
       deltaAngle = getDeltaAngle(proj2TargetPose.pose.position.y, proj2TargetPose.pose.position.x);
 //      deltaAngle = getDeltaAngle(proj2TargetTF);
       ROS_INFO_STREAM("GETTING DELTA ANGLE " << deltaAngle);
@@ -283,8 +302,8 @@ public:
       ROS_INFO_STREAM("CALCULATING OMEGA DIRECTLY " << omega);
 
 //      // Compute max_velocity based on curvature
-//      double v = lin_vel_max_ / (1 + beta_ * std::pow(fabs(curvature), lambda_));
-//      ROS_INFO_STREAM("CALCULATING V BASED ON CURVATURE " << v);
+      double v = lin_vel_max_ / (1 + beta_ * std::pow(fabs(curvature), lambda_));
+      ROS_INFO_STREAM("CALCULATING V BASED ON CURVATURE " << v);
 //      // Limit max velocity based on approaching target (avoids overshoot)
 //      if (goalDist < 0.5)
 //      {
@@ -334,8 +353,9 @@ public:
       syncTFData(deltaTF,deltaTFMsg,deltaTFPose,robotFrameID,projectionFrameID);
       deltaTFMsg.header.stamp = base2ProjectionTFMsg.header.stamp + time_step_duration_;
       tempTFMsg = base2ProjectionTFMsg;
-      tf2::doTransform(base2ProjectionPose, base2ProjectionPose, deltaTFMsg) ;
-      syncTFData(base2ProjectionPose,base2ProjectionTF,base2ProjectionTFMsg,projectionFrameID);
+//      tf2::doTransform(base2ProjectionPose, base2ProjectionPose, deltaTFMsg) ;
+      base2ProjectionTF = base2ProjectionTF * deltaTF;
+      syncTFData(base2ProjectionTF,base2ProjectionTFMsg,base2ProjectionPose,robotFrameID,projectionFrameID);
 //      stepPose(base2ProjectionPose,twist);
       ROS_INFO_STREAM("STEPPED  " << poseString(base2ProjectionPose.pose));
 
@@ -350,21 +370,27 @@ public:
       gdSS << std::fixed << std::setprecision(4) << "OLD: " << oldGoalDist << " NEW: " << goalDist;
       ROS_INFO_STREAM("GOAL DISTANCE " << gdSS.str());
 
-      if(goalDist < oldGoalDist){
-        ROS_INFO_STREAM("ADDING POSE TO PLAN" << poseString(base2ProjectionPose.pose));
-        addtoPlan(base2ProjectionPose,twist);
-      } else {
+      ROS_INFO_STREAM("END PATH STEP #" << steps);
+
+      ROS_INFO_STREAM("ADDING POSE TO PLAN" << poseString(base2ProjectionPose.pose));
+      addtoPlan(base2ProjectionPose,twist);
+
+      if(goalDist > oldGoalDist){
         ROS_WARN_STREAM("STEPPED POSE INCREASING GOAL DIST ERROR");
         base2ProjectionTFMsg = tempTFMsg;
         syncTFData(base2ProjectionTFMsg, base2ProjectionTF, base2ProjectionPose);
-        break;
+//        break;
       }
 
-      ROS_INFO_STREAM("END PATH STEP #" << steps);
+
       if(goalDist <= goal_dist_tolerance_){
         ROS_WARN_STREAM("WITHIN DISTANCE TOLERANCE");
-        break;
+        if (fabs(deltaAngle) <= goal_orientation_tolerance_){
+          ROS_WARN_STREAM("WITHIN ANGLE TOLERANCE");
+          break;
+        }
       }
+
 
       std::cout << "___________________________________________________________________________________________________" << std::endl;
       std::cout << "___________________________________________________________________________________________________" << std::endl << std::endl;
@@ -608,11 +634,14 @@ public:
     tf2::Quaternion qOld, qDelta, qNew;
     tf2::convert(curTF.getRotation(), qOld);
     double yawOld = tf2::getYaw(qOld);
-    double deltaX, deltaY, deltaYaw;
-
+    double deltaX, deltaY, deltaYaw, rho;
+    rho = t.linear.x * time_step_;
     deltaYaw = t.angular.z * time_step_;
-    deltaX = (t.linear.x * cos(deltaYaw)  -  t.linear.y * sin(deltaYaw)) * time_step_;
-    deltaY = (t.linear.x * sin(deltaYaw)  +  t.linear.y * cos(deltaYaw)) * time_step_;
+
+//    deltaX = (t.linear.x * cos(deltaYaw)  -  t.linear.y * sin(deltaYaw)) * time_step_;
+//    deltaY = (t.linear.x * sin(deltaYaw)  +  t.linear.y * cos(deltaYaw)) * time_step_;
+    deltaX = rho * cos(deltaYaw);
+    deltaY = rho * sin(deltaYaw);
 
     tf2::Vector3 deltaOrigin(deltaX, deltaY, curTF.getOrigin().getZ());
     deltaTF.setOrigin(deltaOrigin);
@@ -641,6 +670,7 @@ public:
     ROS_INFO_STREAM("GETTING TF FROM PROJECTION TO TARGET " << transformString(proj2Target));
     return proj2Target;
   }
+
 
 };
 
