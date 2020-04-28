@@ -21,6 +21,8 @@ alias swsm="source ~/mappy_ws/devel/setup.bash"
 alias rcpy="rosclean purge -y"
 
 alias rlmd="rcpy; swsm; roslaunch docking mappy_dock.launch"
+alias rltsd="rcpy; swsd; roslaunch docking turtlebot_sim_dock.launch"
+alias rltd="rcpy; swsd; roslaunch docking turtlebot_dock.launch"
 alias rld="swsd; roslaunch docking line_detection_node.launch"
 
 alias rrim="swsd; rosrun dockbot dock_gazebo_interactive_marker"
