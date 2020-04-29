@@ -1,4 +1,4 @@
-#ifndef POSECONTROLLERNODE_H
+﻿#ifndef POSECONTROLLERNODE_H
 #define POSECONTROLLERNODE_H
 
 //#include <docking/Headers.h>
@@ -83,7 +83,9 @@ public:
   ros::Duration time_step_duration_;
   bool publish_twist_;
   double goal_dist_tolerance_;
+  bool within_goal_dist_tolerance_;
   double goal_orientation_tolerance_;
+  bool within_goal_orientation_tolerance_;
   std::string dock_pose_topic_;
   std::string dock_gazebo_pose_topic_;
   bool use_calculated_pose_;
@@ -170,6 +172,7 @@ public:
 //    frequencyRate_ = frequencyRate;
     plan_.header.frame_id = plan_.path.header.frame_id = plan_.poseArray.header.frame_id = "base_link";
     zeroTwist_.linear.x = zeroTwist_.angular.z = 0.0;
+    within_goal_dist_tolerance_ = within_goal_orientation_tolerance_ = false;
     ROS_INFO_STREAM("PoseControllerNode: Initialized Globals");
   }
 
@@ -394,8 +397,13 @@ public:
 
       if(goalDist <= goal_dist_tolerance_){
         ROS_WARN_STREAM("WITHIN DISTANCE TOLERANCE");
+        within_goal_dist_tolerance_ = true;
         if (fabs(deltaAngle) <= goal_orientation_tolerance_){
           ROS_WARN_STREAM("WITHIN ANGLE TOLERANCE");
+          within_goal_orientation_tolerance_ = true;
+          ROS_WARN_STREAM("DISTANCE AND ANGLE TOLERANCES MET -- EXITING PLAN");
+          addtoPlan(base2ProjectionPose,zeroTwist_);
+//          currentTwist = zeroTwist_;
           break;
         }
       }
