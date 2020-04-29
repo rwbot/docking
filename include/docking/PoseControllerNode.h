@@ -1,4 +1,4 @@
-﻿#ifndef POSECONTROLLERNODE_H
+#ifndef POSECONTROLLERNODE_H
 #define POSECONTROLLERNODE_H
 
 //#include <docking/Headers.h>
@@ -222,6 +222,7 @@ public:
     qEntrance.setRPY(0, 0, 0);
     tf2::convert(qEntrance,base2ProjectionTFMsg.transform.rotation);
     syncTFData(base2EntranceTFMsg,base2EntranceTF,base2EntrancePose);
+    ROS_INFO_STREAM("BASE->ENTRANCE TRANSFORM" << transformString(base2EntranceTFMsg));
 
 
     ROS_INFO_STREAM("ORIGINAL TARGET POSE MSG" << poseString(targetPose));
@@ -300,18 +301,18 @@ public:
 
       // Compute the virtual control
       double deltaControl = getDeltaControl(phi);
-      ROS_INFO_STREAM("GETTING DELTA CONTROL " << deltaControl);
+//      ROS_INFO_STREAM("GETTING DELTA CONTROL " << deltaControl);
 
       // Compute curvature (k)
       double curvature = getCurvature(goalDist, deltaAngle, deltaControl, phi);
 //      ROS_INFO_STREAM("GETTING CURVATURE " << curvature);
 
       double omega = calculateOmega(goalDist, deltaAngle, deltaControl, phi);
-      ROS_INFO_STREAM("CALCULATING OMEGA DIRECTLY " << omega);
+//      ROS_INFO_STREAM("CALCULATING OMEGA DIRECTLY " << omega);
 
 //      // Compute max_velocity based on curvature
       double v = lin_vel_max_ / (1 + beta_ * std::pow(fabs(curvature), lambda_));
-      ROS_INFO_STREAM("CALCULATING V BASED ON CURVATURE " << v);
+//      ROS_INFO_STREAM("CALCULATING V BASED ON CURVATURE " << v);
 //      // Limit max velocity based on approaching target (avoids overshoot)
 //      if (goalDist < 0.5)
 //      {
@@ -525,41 +526,41 @@ public:
 
 
   double getCurvature(double& goalDist, double& deltaAngle, double& deltaControl, double& phi){
-    ROS_INFO_STREAM("Getting Curvature");
+//    ROS_INFO_STREAM("Getting Curvature");
     double k, z, left, right, rightDenom;
     z = getZ(deltaAngle, deltaControl);
 
     left = kDelta_ * z;
-    ROS_INFO_STREAM("GETTING LEFT = " << kDelta_ << " * " << z << " = " << left);
+//    ROS_INFO_STREAM("GETTING LEFT = " << kDelta_ << " * " << z << " = " << left);
 
     rightDenom = 1 + ( (kPhi_*phi)*(kPhi_*phi) );
-    ROS_INFO_STREAM("GETTING RIGHT DENOM = 1 + (" << (kPhi_*phi) << " * " << (kPhi_*phi) << ") = " << rightDenom);
+//    ROS_INFO_STREAM("GETTING RIGHT DENOM = 1 + (" << (kPhi_*phi) << " * " << (kPhi_*phi) << ") = " << rightDenom);
 
     right = kPhi_ / rightDenom;
-    ROS_INFO_STREAM("GETTING RIGHT = " << kPhi_ << " / " << rightDenom << " = " << right);
-    ROS_INFO_STREAM("GETTING RIGHT = " << 1 << " + " << right << " = " << (1 + right));
+//    ROS_INFO_STREAM("GETTING RIGHT = " << kPhi_ << " / " << rightDenom << " = " << right);
+//    ROS_INFO_STREAM("GETTING RIGHT = " << 1 << " + " << right << " = " << (1 + right));
     right = 1 + right;
-    ROS_INFO_STREAM("GETTING RIGHT = " << right << " * sin(" << deltaAngle << ") = " << right << " * " << sin(deltaAngle) << " = " << (right * sin(deltaAngle)));
+//    ROS_INFO_STREAM("GETTING RIGHT = " << right << " * sin(" << deltaAngle << ") = " << right << " * " << sin(deltaAngle) << " = " << (right * sin(deltaAngle)));
     right = right * sin(deltaAngle);
 
 
     k = left + right;
-    ROS_INFO_STREAM("GETTING CURVATURE = " << left << " + " << right << " = " << k);
-    ROS_INFO_STREAM("GETTING CURVATURE = " << k << " * (-1) = " << ((-1) * k) );
+//    ROS_INFO_STREAM("GETTING CURVATURE = " << left << " + " << right << " = " << k);
+//    ROS_INFO_STREAM("GETTING CURVATURE = " << k << " * (-1) = " << ((-1) * k) );
     k = (-1) * k;
-    ROS_INFO_STREAM("GETTING CURVATURE = " << k << " / " << goalDist << " = " << (k / goalDist));
+//    ROS_INFO_STREAM("GETTING CURVATURE = " << k << " / " << goalDist << " = " << (k / goalDist));
     k = k / goalDist;
 //    k = (-1.0/goalDist * (kDelta_ * (deltaAngle - deltaControl) + (1 + (kPhi_/1+((kPhi_*phi)*(kPhi_*phi))))*sin(deltaAngle)));
     return k;
   }
 
   double calculateOmega(double& goalDist, double& deltaAngle, double& deltaControl, double& phi){
-    ROS_INFO_STREAM("Calculating OMEGA with Constant Linear Velocity ->" << lin_vel_min_);
+//    ROS_INFO_STREAM("Calculating OMEGA with Constant Linear Velocity ->" << lin_vel_min_);
     double omega, z, left, right, rightDenom;
     z = getZ(deltaAngle, deltaControl);
 
     left = kDelta_ * z;
-    ROS_INFO_STREAM("GETTING LEFT = " << kDelta_ << " * " << z << " = " << left);
+//    ROS_INFO_STREAM("GETTING LEFT = " << kDelta_ << " * " << z << " = " << left);
 
     rightDenom = 1 + ( (kPhi_*phi)*(kPhi_*phi) );
 //    ROS_INFO_STREAM("GETTING RIGHT DENOM = 1 + (" << (kPhi_*phi) << " * " << (kPhi_*phi) << ") = " << rightDenom);
@@ -573,7 +574,7 @@ public:
 
 
     omega = left + right;
-    ROS_INFO_STREAM("GETTING OMEGA = " << left << " + " << right << " = " << omega);
+//    ROS_INFO_STREAM("GETTING OMEGA = " << left << " + " << right << " = " << omega);
 //    ROS_INFO_STREAM("GETTING OMEGA = " << omega << " * (-1) = " << ((-1) * omega) );
     omega = (-1) * omega;
 //    ROS_INFO_STREAM("GETTING OMEGA = " << omega << " / " << goalDist << " = " << (omega / goalDist));
@@ -586,7 +587,7 @@ public:
 
   double getZ(double& deltaAngle, double& deltaControl){
     double z = deltaAngle - deltaControl;
-    ROS_INFO_STREAM("GETTING Z = " << deltaAngle << " - " << deltaControl << " = " << z);
+//    ROS_INFO_STREAM("GETTING Z = " << deltaAngle << " - " << deltaControl << " = " << z);
     return z;
   }
 
