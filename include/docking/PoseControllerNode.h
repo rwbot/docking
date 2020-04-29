@@ -191,6 +191,14 @@ public:
   bool calculatePlan(geometry_msgs::PoseStamped& targetPose){
     std::cout << std::endl;
     ROS_INFO_STREAM("BEGIN calculatePlan");
+
+    if(within_goal_dist_tolerance_ && within_goal_orientation_tolerance_)
+    {
+      ROS_WARN_STREAM("CURRENT MEASURED DISTANCE AND ANGLE TOLERANCES MET -- EXITING PLAN");
+      cmd_vel_pub_.publish(zeroTwist_);
+      return true;
+    }
+
     clearGlobals();
     geometry_msgs::Twist twist, currentTwist;
     int steps = 0;
@@ -258,11 +266,12 @@ public:
     syncTFData(proj2TargetTF,proj2TargetTFMsg,proj2TargetPose,projectionFrameID,targetFrameID);
 
     // Distance to goal
-    double goalDist = proj2TargetTF.getOrigin().length();
-    ROS_INFO_STREAM("GETTING DISTANCE TO GOAL: " << goalDist);
+    double currentGoalDist, projGoalDist;
+    currentGoalDist = projGoalDist = proj2TargetTF.getOrigin().length();
+    ROS_INFO_STREAM("GETTING DISTANCE TO GOAL: " << currentGoalDist);
     double deltaAngle = 1.0;
     // If within distance tolerance, return true
-    if((goalDist < goal_dist_tolerance_) && (fabs(deltaAngle) < goal_orientation_tolerance_))
+    if ((currentGoalDist < goal_dist_tolerance_) && (fabs(deltaAngle) < goal_orientation_tolerance_))
     {
       ROS_WARN_STREAM("WITHIN DISTANCE TOLERANCE. GOAL REACHED");
       return true;
@@ -271,7 +280,9 @@ public:
     // Add initial robot pose to plan
     addtoPlan(base2ProjectionPose,zeroTwist_);
 
-    while((goalDist > goal_dist_tolerance_) || (fabs(deltaAngle) > goal_orientation_tolerance_)){
+    while ((projGoalDist > goal_dist_tolerance_) || (fabs(deltaAngle) > goal_orientation_tolerance_))
+    {
+      ROS_INFO_STREAM("STEP " << steps);
 
       if(use_steps_){
         if(steps > path_steps_){
@@ -285,7 +296,7 @@ public:
         break;
       }
 
-      ROS_INFO_STREAM("DIST TO GOAL = " << goalDist << " > " << goal_dist_tolerance_);
+      ROS_INFO_STREAM("PROJ DIST TO GOAL = " << projGoalDist << " > " << goal_dist_tolerance_);
 //      // Orientation base frame relative to r_
 
       deltaAngle = getDeltaAngle(proj2TargetPose.pose.position.y, proj2TargetPose.pose.position.x);
@@ -307,13 +318,13 @@ public:
 //      ROS_INFO_STREAM("GETTING DELTA CONTROL " << deltaControl);
 
       // Compute curvature (k)
-      double curvature = getCurvature(goalDist, deltaAngle, deltaControl, phi);
-//      ROS_INFO_STREAM("GETTING CURVATURE " << curvature);
+      double curvature = getCurvature(projGoalDist, deltaAngle, deltaControl, phi);
+      //      ROS_INFO_STREAM("GETTING CURVATURE " << curvature);
 
-      double omega = calculateOmega(goalDist, deltaAngle, deltaControl, phi);
-//      ROS_INFO_STREAM("CALCULATING OMEGA DIRECTLY " << omega);
+      double omega = calculateOmega(projGoalDist, deltaAngle, deltaControl, phi);
+      //      ROS_INFO_STREAM("CALCULATING OMEGA DIRECTLY " << omega);
 
-//      // Compute max_velocity based on curvature
+      //      // Compute max_velocity based on curvature
       double v = lin_vel_max_ / (1 + beta_ * std::pow(fabs(curvature), lambda_));
 //      ROS_INFO_STREAM("CALCULATING V BASED ON CURVATURE " << v);
 //      // Limit max velocity based on approaching target (avoids overshoot)
@@ -345,7 +356,7 @@ public:
 //      twist.linear.x = v;
       twist.linear.x = lin_vel_min_;
       ROS_INFO_STREAM("TWIST: " << twistString(twist));
-      if(goalDist < entrance_dist_){
+      if(projGoalDist < entrance_dist_){
         twist.linear.x *= 0.25;
         twist.angular.z *= 0.25;
         ROS_INFO_STREAM("Approaching Target - Twist Scaled Down To " << twistString(twist));
@@ -374,12 +385,12 @@ public:
 
 
       ROS_INFO_STREAM("GETTING DISTANCE BETWEEN UPDATED TARGET & STEPPED POSE");
-      double oldGoalDist = goalDist;
+      double oldProjGoalDist = projGoalDist;
       proj2TargetTF = getProjectionToTargetTF(base2ProjectionTF,base2TargetTF);
       syncTFData(proj2TargetTF,proj2TargetTFMsg,proj2TargetPose,projectionFrameID,targetFrameID);
-      goalDist = proj2TargetTF.getOrigin().length();
+      projGoalDist = proj2TargetTF.getOrigin().length();
       std::ostringstream gdSS;
-      gdSS << std::fixed << std::setprecision(4) << "OLD: " << oldGoalDist << " NEW: " << goalDist;
+      gdSS << std::fixed << std::setprecision(4) << "OLD: " << oldProjGoalDist << " NEW: " << projGoalDist;
       ROS_INFO_STREAM("GOAL DISTANCE " << gdSS.str());
 
       ROS_INFO_STREAM("END PATH STEP #" << steps);
@@ -387,23 +398,22 @@ public:
       ROS_INFO_STREAM("ADDING POSE TO PLAN" << poseString(base2ProjectionPose.pose));
       addtoPlan(base2ProjectionPose,twist);
 
-      if(goalDist > oldGoalDist){
+      if (projGoalDist > oldProjGoalDist)
+      {
         ROS_WARN_STREAM("STEPPED POSE INCREASING GOAL DIST ERROR");
         base2ProjectionTFMsg = tempTFMsg;
         syncTFData(base2ProjectionTFMsg, base2ProjectionTF, base2ProjectionPose);
 //        break;
       }
 
-
-      if(goalDist <= goal_dist_tolerance_){
-        ROS_WARN_STREAM("WITHIN DISTANCE TOLERANCE");
+      if(projGoalDist <= goal_dist_tolerance_){
+        ROS_WARN_STREAM("CURRENT PROJECTION STEP WITHIN DISTANCE TOLERANCE");
         within_goal_dist_tolerance_ = true;
         if (fabs(deltaAngle) <= goal_orientation_tolerance_){
-          ROS_WARN_STREAM("WITHIN ANGLE TOLERANCE");
+          ROS_WARN_STREAM("CURRENT PROJECTION STEP WITHIN ANGLE TOLERANCE");
           within_goal_orientation_tolerance_ = true;
-          ROS_WARN_STREAM("DISTANCE AND ANGLE TOLERANCES MET -- EXITING PLAN");
+          ROS_WARN_STREAM("CURRENT PROJECTION STEP DISTANCE AND ANGLE TOLERANCES MET -- EXITING PLAN");
           addtoPlan(base2ProjectionPose,zeroTwist_);
-//          currentTwist = zeroTwist_;
           break;
         }
       }
@@ -419,6 +429,21 @@ public:
     }
 
     ROS_WARN_STREAM("COMPLETED TRAJECTORY CALCULATION ");
+
+    if (currentGoalDist <= goal_dist_tolerance_)
+    {
+      ROS_WARN_STREAM("CURRENT MEASURED GOAL DIST " << currentGoalDist << " WITHIN DISTANCE TOLERANCE");
+      within_goal_dist_tolerance_ = true;
+      currentTwist.linear.x = 0;
+       if (fabs(deltaAngle) <= goal_orientation_tolerance_)
+       {
+         ROS_WARN_STREAM("CURRENT MEASURED WITHIN ANGLE TOLERANCE");
+         within_goal_orientation_tolerance_ = true;
+         ROS_WARN_STREAM("CURRENT MEASURED DISTANCE AND ANGLE TOLERANCES MET -- EXITING PLAN");
+         addtoPlan(base2ProjectionPose, zeroTwist_);
+         currentTwist = zeroTwist_;
+       }
+    }
 
     if(publish_twist_){
       ROS_INFO_STREAM("Publish Twist " << twistString(currentTwist));
