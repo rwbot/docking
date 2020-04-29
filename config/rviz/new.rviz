@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /ICP1/Target1
         - /TF1/Frames1
+        - /PoseArray1/Status1
         - /Odometry1/Status1
         - /Odometry1/Shape1
       Splitter Ratio: 0.618677020072937
@@ -64,16 +65,6 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        accerion_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        balance_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
         base_footprint:
           Alpha: 1
           Show Axes: false
@@ -83,32 +74,26 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        laser:
+        base_scan:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        left_caster:
+        caster_back_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        left_wheel:
+        imu_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        wheel_left_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        lidar_truth:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        right_caster:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        right_wheel:
+        wheel_right_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -230,7 +215,7 @@ Visualization Manager:
       Color: 238; 238; 236
       Color Transformer: RGB8
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 0
@@ -247,7 +232,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -427,38 +412,32 @@ Visualization Manager:
           Topic: /line_detection_node/docking/dock_pose
           Unreliable: false
           Value: false
-      Enabled: false
+      Enabled: true
       Name: ICP
     - Class: rviz/TF
       Enabled: true
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        accerion_link:
-          Value: false
-        balance_link:
-          Value: false
         base_footprint:
           Value: false
         base_link:
           Value: false
-        dock_truth:
+        base_scan:
           Value: true
-        laser:
-          Value: false
-        left_caster:
-          Value: false
-        left_wheel:
-          Value: false
-        lidar_truth:
-          Value: false
+        caster_back_link:
+          Value: true
+        dock:
+          Value: true
+        imu_link:
+          Value: true
         odom:
           Value: true
-        right_caster:
-          Value: false
-        right_wheel:
-          Value: false
-      Marker Scale: 0.5
+        wheel_left_link:
+          Value: true
+        wheel_right_link:
+          Value: true
+      Marker Scale: 0.20000000298023224
       Name: TF
       Show Arrows: true
       Show Axes: true
@@ -467,24 +446,17 @@ Visualization Manager:
         odom:
           base_footprint:
             base_link:
-              accerion_link:
+              base_scan:
+                dock:
+                  {}
+              caster_back_link:
                 {}
-              balance_link:
+              imu_link:
                 {}
-              laser:
+              wheel_left_link:
                 {}
-              left_caster:
+              wheel_right_link:
                 {}
-              lidar_truth:
-                {}
-              right_caster:
-                {}
-            left_wheel:
-              {}
-            right_wheel:
-              {}
-          dock_truth:
-            {}
       Update Interval: 0
       Value: true
     - Class: rviz/Marker
@@ -567,7 +539,7 @@ Visualization Manager:
           Scale: 1
           Value: true
         Value: false
-      Enabled: true
+      Enabled: false
       Keep: 100
       Name: Odometry
       Position Tolerance: 0.10000000149011612
@@ -583,7 +555,7 @@ Visualization Manager:
         Value: Arrow
       Topic: /odom
       Unreliable: false
-      Value: true
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -621,11 +593,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 589.2915649414062
+      Scale: 621.1187744140625
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 0.5447679162025452
-      Y: 0.15281257033348083
+      X: 0.03603753075003624
+      Y: -0.06324513256549835
     Saved: ~
 Window Geometry:
   Displays:

@@ -1,4 +1,4 @@
-#ifndef POSECONTROLLERNODE_H
+﻿#ifndef POSECONTROLLERNODE_H
 #define POSECONTROLLERNODE_H
 
 //#include <docking/Headers.h>
@@ -57,6 +57,7 @@ public:
   ros::Publisher cmd_vel_pub_;  // Publisher of commands
   ros::Publisher path_pub_;  // Publisher of paths
   ros::Publisher pose_array_pub_;  // Publisher of pose array
+  ros::Publisher pose_executed_array_pub_;  // Publisher of pose array
   ros::Publisher twist_array_pub_;  // Publisher of twist array
   ros::Subscriber dockPoseSub_;
   tf2_ros::Buffer tfBuffer_;
@@ -143,6 +144,7 @@ public:
     cmd_vel_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 10);
     path_pub_ = nh_.advertise<nav_msgs::Path>("docking/path", 10);
     pose_array_pub_ = nh_.advertise<geometry_msgs::PoseArray>("docking/pose_array", 10);
+    pose_executed_array_pub_ = nh_.advertise<geometry_msgs::PoseArray>("docking/pose_executed_array", 10);
     twist_array_pub_ = nh_.advertise<geometry_msgs::PoseArray>("docking/twist_array", 10);
   }
 
@@ -152,19 +154,23 @@ public:
     if(use_calculated_pose_){
       ROS_WARN_STREAM("PoseControllerNode: Subscribing to " << dock_pose_topic_);
       dockPoseSub_ = nh_.subscribe(dock_pose_topic_, 1, &PoseControllerNode::dockPoseCallback, this);
+      ROS_WARN_STREAM("PoseControllerNode: Subscribed to " << dock_pose_topic_);
     } else {
       ROS_INFO_STREAM("PoseControllerNode: Subscribing to " << dock_gazebo_pose_topic_);
       dockPoseSub_ = nh_.subscribe(dock_gazebo_pose_topic_, 1, &PoseControllerNode::dockPoseCallback, this);
+      ROS_INFO_STREAM("PoseControllerNode: Subscribed to " << dock_gazebo_pose_topic_);
     }
   }
 
   void initGlobals(){
+    ROS_INFO_STREAM("PoseControllerNode: Initializing Globals");
     ros::Duration time_step_duration(time_step_);
     time_step_duration_ = time_step_duration;
 //    ros::Rate frequencyRate(frequency_);
 //    frequencyRate_ = frequencyRate;
     plan_.header.frame_id = plan_.path.header.frame_id = plan_.poseArray.header.frame_id = "base_link";
     zeroTwist_.linear.x = zeroTwist_.angular.z = 0.0;
+    ROS_INFO_STREAM("PoseControllerNode: Initialized Globals");
   }
 
   void clearGlobals(){
@@ -181,6 +187,7 @@ public:
 
   bool calculatePlan(geometry_msgs::PoseStamped& targetPose){
     std::cout << std::endl;
+    ROS_INFO_STREAM("BEGIN calculatePlan");
     clearGlobals();
     geometry_msgs::Twist twist, currentTwist;
     int steps = 0;
@@ -188,7 +195,7 @@ public:
     ROS_INFO_STREAM("**************** BEGINNING CALCULATING PLAN ****************");
     tf2::Transform base2ProjectionTF, robotTF, base2TargetTF, base2EntranceTF, proj2TargetTF, deltaTF;
     geometry_msgs::TransformStamped base2ProjectionTFMsg, robotTFMsg, base2TargetTFMsg, base2EntranceTFMsg, proj2TargetTFMsg, deltaTFMsg, tempTFMsg;
-    geometry_msgs::PoseStamped base2ProjectionPose, robotPose, base2TargetPose, base2EntrancePose, proj2TargetPose, deltaTFPose;
+    geometry_msgs::PoseStamped base2ProjectionPose, robotPose, base2TargetPose, base2EntrancePose, proj2TargetPose, deltaTFPose, target2EntrancePose;
     std::string projectionFrameID="projection", robotFrameID="base_link", targetFrameID="target", entranceFrameID="entrance";
 
 //    Init Base to Projection
@@ -204,6 +211,7 @@ public:
 //    ROS_INFO_STREAM("BASE->PROJECTION TRANSFORM" << transformString(base2ProjectionTF));
 //    ROS_INFO_STREAM("BASE->PROJECTION POSE MSG" << poseString(base2ProjectionPose.pose));
 
+//    target2EntrancePose.header.frame_id =
     // Init Base to Entrance
     base2EntranceTFMsg.header.frame_id = robotFrameID;
     base2EntranceTFMsg.child_frame_id = entranceFrameID;
@@ -295,7 +303,7 @@ public:
       ROS_INFO_STREAM("GETTING DELTA CONTROL " << deltaControl);
 
       // Compute curvature (k)
-//      double curvature = getCurvature(goalDist, deltaAngle, deltaControl, phi);
+      double curvature = getCurvature(goalDist, deltaAngle, deltaControl, phi);
 //      ROS_INFO_STREAM("GETTING CURVATURE " << curvature);
 
       double omega = calculateOmega(goalDist, deltaAngle, deltaControl, phi);

@@ -3,7 +3,9 @@
     <arg name="gui" default="false"/>
     <arg name="dock_x" default="0.09"/>
     <arg name="dock_y" default="0.0"/>
-    <arg name="dock_YAW" default="-1.570796"/>
+    <!-- <arg name="dock_YAW" default="-1.570796"/> -->
+    <arg name="dock_YAW" default="0"/>
+
 
 
     <arg name="world_name" default="worlds/empty.world"/>

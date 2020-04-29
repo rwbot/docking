@@ -1,22 +1,24 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="gui" default="false"/>
-    <arg name="dock_x" default="0.09"/>
+    <arg name="dock_x" default="0.5"/>
     <arg name="dock_y" default="0.0"/>
-    <arg name="dock_YAW" default="-1.570796"/>
+    <!-- <arg name="dock_YAW" default="-1.570796"/> -->
+    <arg name="dock_YAW" default="0"/>
 
 
-    <arg name="world_name" default="worlds/empty.world"/>
+
+    <!-- <arg name="world_name" default="worlds/empty.world"/> -->
     <!-- <arg name="world_name" value="$(find docking)/worlds/obstacles.world"/> -->
     <!-- <arg name="world_name" value="$(find docking)/worlds/demo.world"/> -->
 
-    <include file="$(find dockbot)/launch/turtledock.launch">
+    <!-- <include file="$(find dockbot)/launch/turtledock.launch">
         <arg name="gui" value="$(arg gui)" />
         <arg name="dock_x" value="$(arg dock_x)" />
         <arg name="dock_y" value="$(arg dock_y)" />
         <arg name="dock_YAW" value="$(arg dock_YAW)" />
         <arg name="world_name" value="$(arg world_name)" />
-    </include>
+    </include> -->
 
     <include file="$(find docking)/launch/laserscan_to_pointcloud.launch"/>
 
