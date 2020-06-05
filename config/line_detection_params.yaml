@@ -5,6 +5,7 @@ RANSAC_on_clusters:     True
 
 Voxel_leaf_size:        0.001
 
-EC_cluster_tolerance:   0.03
+EC_cluster_tolerance:   0.14
+#EC_cluster_tolerance:   0.03 #tb3
 EC_min_size:            8
 EC_max_size:            250

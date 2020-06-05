@@ -31,3 +31,9 @@ alias rlim="swsd; roslaunch dockbot dock_gazebo_interactive_marker.launch"
 alias rldrz="swsd; swsm; roslaunch docking rviz.launch"
 
 alias rlpc="swsd; roslaunch docking pose_controller_node.launch"
+
+alias sshpi="ssh rw@10.252.165.216"
+alias tb3rob="roslaunch turtlebot3_bringup turtlebot3_robot.launch"
+
+alias tb3up="sshpi; tb3rob"
+alias tb3rem="roslaunch turtlebot3_bringup turtlebot3_remote.launch"

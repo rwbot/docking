@@ -11,4 +11,10 @@
 	<!-- Start up the dynamic reconfigure GUI. -->
 	<node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure"/>
 
+	<arg name="rvizconfig" default="$(find docking)/config/rviz/new.rviz" />
+	<node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" />
+
+	<!-- <include file="$(find logitech_f710)/launch/f710.launch"/> -->
+
+
 </launch>

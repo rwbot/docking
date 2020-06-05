@@ -192,12 +192,12 @@ public:
     std::cout << std::endl;
     ROS_INFO_STREAM("BEGIN calculatePlan");
 
-    if(within_goal_dist_tolerance_ && within_goal_orientation_tolerance_)
-    {
-      ROS_WARN_STREAM("CURRENT MEASURED DISTANCE AND ANGLE TOLERANCES MET -- EXITING PLAN");
-      cmd_vel_pub_.publish(zeroTwist_);
-      return true;
-    }
+//    if(within_goal_dist_tolerance_ && within_goal_orientation_tolerance_)
+//    {
+//      ROS_WARN_STREAM("CURRENT MEASURED DISTANCE AND ANGLE TOLERANCES MET -- EXITING PLAN");
+//      cmd_vel_pub_.publish(zeroTwist_);
+//      return true;
+//    }
 
     clearGlobals();
     geometry_msgs::Twist twist, currentTwist;
