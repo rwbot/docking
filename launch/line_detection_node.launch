@@ -19,8 +19,8 @@
 
 		<include file="$(find docking)/launch/laserscan_to_pointcloud.launch"/>
 
-		<arg name="rvizconfig" default="$(find docking)/config/rviz/docking.rviz" />
-		<node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" />
+		<!-- <arg name="rvizconfig" default="$(find docking)/config/rviz/docking.rviz" /> -->
+		<!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" /> -->
 
 	<!-- Start up the dynamic reconfigure GUI. -->
 	<node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure"/>

@@ -6,9 +6,9 @@
     <arg name="dock_YAW" default="-0.69"/>
 
 
-    <!-- <arg name="world_name" default="worlds/empty.world"/> -->
+    <arg name="world_name" default="worlds/empty.world"/>
     <!-- <arg name="world_name" value="$(find docking)/worlds/obstacles.world"/> -->
-    <arg name="world_name" value="$(find docking)/worlds/demo.world"/>
+    <!-- <arg name="world_name" value="$(find docking)/worlds/demo.world"/> -->
 
     <include file="$(find dockbot)/launch/dock.launch">
         <arg name="gui" value="$(arg gui)" />
@@ -42,7 +42,8 @@
     <node name="mappy_urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-urdf  -model mappy -param robot_description -x $(arg x) -y $(arg y) -z $(arg z)"/>
 
 
-    <arg name="rvizconfig" default="$(find docking)/config/rviz/docking.rviz" />
+    <!-- <arg name="rvizconfig" default="$(find docking)/config/rviz/docking.rviz" /> -->
+    <arg name="rvizconfig" default="$(find docking)/config/rviz/new.rviz" />
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" />
 
     <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">

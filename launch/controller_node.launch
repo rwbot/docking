@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
 
-	<node pkg="docking" type="pose_controller_node" name="pose_controller_node" output="screen" respawn="false" clear_params="true" >
+	<node pkg="docking" type="controller_node" name="controller_node" output="screen" respawn="false" clear_params="true" >
 		<!-- Arguments to allow changing common parameters from the command line or when including this file from other launch files. -->
 
 		<!-- <rosparam file="$(find docking)/config/line_detection_params.yaml" /> -->
@@ -9,7 +9,7 @@
     </node>
 
 	<!-- Start up the dynamic reconfigure GUI. -->
-	<node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure"/>
+	<!-- <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure"/> -->
 
 	<!-- <arg name="rvizconfig" default="$(find docking)/config/rviz/new.rviz" /> -->
 	<!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" /> -->

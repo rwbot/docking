@@ -1,64 +1,63 @@
-﻿#ifndef POSECONTROLLERNODE_H
-#define POSECONTROLLERNODE_H
+#ifndef PLANNERNODE_H
+#define PLANNERNODE_H
 
-//#include <docking/Headers.h>
+#include <docking/Headers.h>
 #include <docking/Helpers.h>
 #include <docking/PCLHelpers.h>
-#include <ros/ros.h>
-#include <docking/PoseControllerConfig.h>
 #include <docking/Plan.h>
+#include <docking/PlannerNodeConfig.h>
+#include <ros/ros.h>
 // Dynamic reconfigure includes.
 #include <dynamic_reconfigure/server.h>
 
 #include <tf/transform_listener.h>
-#include <tf2_ros/transform_listener.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <tf2/LinearMath/Transform.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Scalar.h>
+#include <tf2/LinearMath/Transform.h>
 #include <tf2/LinearMath/Vector3.h>
 #include <tf2/convert.h>
-#include <tf2/utils.h>
-#include <tf2/impl/utils.h>
 #include <tf2/impl/convert.h>
+#include <tf2/impl/utils.h>
 #include <tf2/transform_datatypes.h>
+#include <tf2/utils.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2_ros/transform_listener.h>
 
-#include <geometry_msgs/Twist.h>
+#include <angles/angles.h>
+#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Quaternion.h>
 #include <geometry_msgs/Transform.h>
 #include <geometry_msgs/TransformStamped.h>
-#include <geometry_msgs/Quaternion.h>
-#include <geometry_msgs/Pose.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/PoseArray.h>
-#include <nav_msgs/Path.h>
-#include <angles/angles.h>
+#include <geometry_msgs/Twist.h>
 #include <math.h>
+#include <nav_msgs/Path.h>
 
-class PoseControllerNode
+
+class PlannerNode
 {
 public:
-  PoseControllerNode(ros::NodeHandle& nh) :
+  PlannerNode(ros::NodeHandle &nh) : 
     nh_(nh), tfListener_(tfBuffer_)
   {
-//    nh_ = nh;
-    ROS_INFO_STREAM("INITIALIZING POSE CONTROLLER NODE OBJECT");
-
+    //    nh_ = nh;
+    ROS_INFO_STREAM("INITIALIZING PLANNER NODE OBJECT");
     ROS_INFO_STREAM("STARTING DYNAMIC RECONFIGURE SERVER");
     startDynamicReconfigureServer();
     startPub();
     startPoseSub();
     initGlobals();
   }
-  ~PoseControllerNode(){
-    cmd_vel_pub_.publish(zeroTwist_);
-  }
+  ~PlannerNode(){  }
+
 
   ros::NodeHandle nh_;
-  ros::Publisher cmd_vel_pub_;  // Publisher of commands
   ros::Publisher path_pub_;  // Publisher of paths
   ros::Publisher pose_array_pub_;  // Publisher of pose array
   ros::Publisher pose_executed_array_pub_;  // Publisher of pose array
   ros::Publisher twist_array_pub_;  // Publisher of twist array
+  ros::Publisher plan_pub_; // Publisher of docking::Plan msg
   ros::Subscriber dockPoseSub_;
   tf2_ros::Buffer tfBuffer_;
   tf2_ros::TransformListener tfListener_;
@@ -66,7 +65,7 @@ public:
   docking::Plan plan_;
 
   //! Dynamic reconfigure server.
-  dynamic_reconfigure::Server<docking::PoseControllerConfig> dr_srv_;
+  dynamic_reconfigure::Server<docking::PlannerNodeConfig> dr_srv_;
   //! Dynamic Reconfig Variables
   std::string dock_frame_;
   double omega_max_;
@@ -106,17 +105,19 @@ public:
   geometry_msgs::Twist zeroTwist_;
 
 
+
+
   // Declaration and Definition
   void startDynamicReconfigureServer() {
   // Set up a dynamic reconfigure server.
   // Do this before parameter server, else some of the parameter server values can be overwritten.
-    dynamic_reconfigure::Server<docking::PoseControllerConfig>::CallbackType cb;
-    cb = boost::bind(&PoseControllerNode::configCallback, this, _1, _2);
+    dynamic_reconfigure::Server<docking::PlannerNodeConfig>::CallbackType cb;
+    cb = boost::bind(&PlannerNode::configCallback, this, _1, _2);
     dr_srv_.setCallback(cb);
   }
 
   //! Callback function for dynamic reconfigure server.
-  void configCallback(docking::PoseControllerConfig &config, uint32_t level __attribute__((unused))) {
+  void configCallback(docking::PlannerNodeConfig &config, uint32_t level __attribute__((unused))) {
     omega_max_ = config.omega_max;
     kPhi_ = config.kPhi;
     kDelta_ = config.kDelta;
@@ -127,7 +128,6 @@ public:
     lin_vel_max_ = config.v;
     path_steps_ = config.path_steps;
     time_step_ = config.time_step;
-    publish_twist_ = config.publish_twist;
     use_steps_ = config.use_steps;
     goal_orientation_tolerance_ = config.goal_orientation_tolerance;
     goal_dist_tolerance_ = config.goal_dist_tolerance;
@@ -143,29 +143,29 @@ public:
   }
 
   void startPub() {
-    cmd_vel_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 10);
     path_pub_ = nh_.advertise<nav_msgs::Path>("docking/path", 10);
     pose_array_pub_ = nh_.advertise<geometry_msgs::PoseArray>("docking/pose_array", 10);
     pose_executed_array_pub_ = nh_.advertise<geometry_msgs::PoseArray>("docking/pose_executed_array", 10);
     twist_array_pub_ = nh_.advertise<geometry_msgs::PoseArray>("docking/twist_array", 10);
+    plan_pub_ = nh_.advertise<docking::Plan>("docking/plan", 10);
   }
 
 //  void startPoseSub(std::string& dockPoseTopic)
   void startPoseSub()
   {
     if(use_calculated_pose_){
-      ROS_WARN_STREAM("PoseControllerNode: Subscribing to " << dock_pose_topic_);
-      dockPoseSub_ = nh_.subscribe(dock_pose_topic_, 1, &PoseControllerNode::dockPoseCallback, this);
-      ROS_WARN_STREAM("PoseControllerNode: Subscribed to " << dock_pose_topic_);
+      ROS_WARN_STREAM("PlannerNode: Subscribing to " << dock_pose_topic_);
+      dockPoseSub_ = nh_.subscribe(dock_pose_topic_, 1, &PlannerNode::dockPoseCallback, this);
+      ROS_WARN_STREAM("PlannerNode: Subscribed to " << dock_pose_topic_);
     } else {
-      ROS_INFO_STREAM("PoseControllerNode: Subscribing to " << dock_gazebo_pose_topic_);
-      dockPoseSub_ = nh_.subscribe(dock_gazebo_pose_topic_, 1, &PoseControllerNode::dockPoseCallback, this);
-      ROS_INFO_STREAM("PoseControllerNode: Subscribed to " << dock_gazebo_pose_topic_);
+      ROS_INFO_STREAM("PlannerNode: Subscribing to " << dock_gazebo_pose_topic_);
+      dockPoseSub_ = nh_.subscribe(dock_gazebo_pose_topic_, 1, &PlannerNode::dockPoseCallback, this);
+      ROS_INFO_STREAM("PlannerNode: Subscribed to " << dock_gazebo_pose_topic_);
     }
   }
 
   void initGlobals(){
-    ROS_INFO_STREAM("PoseControllerNode: Initializing Globals");
+    ROS_INFO_STREAM("PlannerNode: Initializing Globals");
     ros::Duration time_step_duration(time_step_);
     time_step_duration_ = time_step_duration;
 //    ros::Rate frequencyRate(frequency_);
@@ -173,7 +173,7 @@ public:
     plan_.header.frame_id = plan_.path.header.frame_id = plan_.poseArray.header.frame_id = "base_link";
     zeroTwist_.linear.x = zeroTwist_.angular.z = 0.0;
     within_goal_dist_tolerance_ = within_goal_orientation_tolerance_ = false;
-    ROS_INFO_STREAM("PoseControllerNode: Initialized Globals");
+    ROS_INFO_STREAM("PlannerNode: Initialized Globals");
   }
 
   void clearGlobals(){
@@ -372,7 +372,7 @@ public:
 //      ROS_INFO_STREAM("STEPPING POSE");
       deltaTFMsg = base2ProjectionTFMsg;
 //      syncTFData(deltaTFMsg,deltaTF,deltaTFPose);
-      deltaTF = getDeltaTF(base2ProjectionTF,twist,time_step_);
+      deltaTF = getDeltaTF(base2ProjectionTF,twist);
       syncTFData(deltaTF,deltaTFMsg,deltaTFPose,robotFrameID,projectionFrameID);
       deltaTFMsg.header.stamp = base2ProjectionTFMsg.header.stamp + time_step_duration_;
       tempTFMsg = base2ProjectionTFMsg;
@@ -430,31 +430,12 @@ public:
 
     ROS_WARN_STREAM("COMPLETED TRAJECTORY CALCULATION ");
 
-    if (currentGoalDist <= goal_dist_tolerance_)
-    {
-      ROS_WARN_STREAM("CURRENT MEASURED GOAL DIST " << currentGoalDist << " WITHIN DISTANCE TOLERANCE");
-      within_goal_dist_tolerance_ = true;
-      currentTwist.linear.x = 0;
-       if (fabs(deltaAngle) <= goal_orientation_tolerance_)
-       {
-         ROS_WARN_STREAM("CURRENT MEASURED WITHIN ANGLE TOLERANCE");
-         within_goal_orientation_tolerance_ = true;
-         ROS_WARN_STREAM("CURRENT MEASURED DISTANCE AND ANGLE TOLERANCES MET -- EXITING PLAN");
-         addtoPlan(base2ProjectionPose, zeroTwist_);
-         currentTwist = zeroTwist_;
-       }
-    }
 
-    if(publish_twist_){
-      ROS_INFO_STREAM("Publish Twist " << twistString(currentTwist));
-      cmd_vel_pub_.publish(currentTwist);
-    } else {
-      cmd_vel_pub_.publish(zeroTwist_);
-    }
     addtoPlan(base2TargetPose,zeroTwist_);
 
     path_pub_.publish(plan_.path);
     pose_array_pub_.publish(plan_.poseArray);
+    plan_pub_.publish(plan_);
 
     std::cout << std::endl << std::endl ;
     std::cout << "######################################################################################################" << std::endl;
@@ -631,89 +612,88 @@ public:
   }
 
 
-//  void stepPose(geometry_msgs::PoseStamped& poseOld, geometry_msgs::Twist& t){
-//    ROS_INFO_STREAM("Started Stepping Pose with Twist " << twistString(t));
-//    geometry_msgs::PoseStamped poseDelta, poseNew;
-//    poseOld.header.stamp = poseOld.header.stamp + time_step_duration_;
+  void stepPose(geometry_msgs::PoseStamped& poseOld, geometry_msgs::Twist& t){
+    ROS_INFO_STREAM("Started Stepping Pose with Twist " << twistString(t));
+    geometry_msgs::PoseStamped poseDelta, poseNew;
+    poseOld.header.stamp = poseOld.header.stamp + time_step_duration_;
 
-//    double yawOld = getYaw(poseOld.pose.orientation), yawNew=0;
-//    tf2::Quaternion qOld, qDelta, qNew;
-//    tf2::convert(poseOld.pose.orientation , qOld);
-
-
-//    poseDelta.pose.position.x = (t.linear.x * cos(yawOld)  -  t.linear.y * sin(yawOld)) * time_step_;
-//    poseDelta.pose.position.y = (t.linear.x * sin(yawOld)  +  t.linear.y * cos(yawOld)) * time_step_;
-//    double yawDelta = t.angular.z * time_step_;
-//    poseDelta.pose.orientation = getQuaternion(yawDelta);
+    double yawOld = getYaw(poseOld.pose.orientation), yawNew=0;
+    tf2::Quaternion qOld, qDelta, qNew;
+    tf2::convert(poseOld.pose.orientation , qOld);
 
 
-//    poseNew.pose.position.x = poseOld.pose.position.x + poseDelta.pose.position.x;
-//    poseNew.pose.position.y = poseOld.pose.position.y + poseDelta.pose.position.y;
-//    yawNew = yawOld + yawDelta;
-//    poseNew.pose.orientation = getQuaternion(yawNew);
-//    qDelta.setRPY(0,0,yawDelta);
-//    qNew = qDelta * qOld;
-//    qNew.normalize();
+    poseDelta.pose.position.x = (t.linear.x * cos(yawOld)  -  t.linear.y * sin(yawOld)) * time_step_;
+    poseDelta.pose.position.y = (t.linear.x * sin(yawOld)  +  t.linear.y * cos(yawOld)) * time_step_;
+    double yawDelta = t.angular.z * time_step_;
+    poseDelta.pose.orientation = getQuaternion(yawDelta);
 
-//    ROS_INFO_STREAM("ORIG  Pose           " << poseString(poseOld.pose) << " YAW: " << yawOld);
 
-//    ROS_INFO_STREAM("DELTA Pose (YAW calc)" << poseString(poseDelta.pose)  << " YAW: " << yawDelta);
+    poseNew.pose.position.x = poseOld.pose.position.x + poseDelta.pose.position.x;
+    poseNew.pose.position.y = poseOld.pose.position.y + poseDelta.pose.position.y;
+    yawNew = yawOld + yawDelta;
+    poseNew.pose.orientation = getQuaternion(yawNew);
+    qDelta.setRPY(0,0,yawDelta);
+    qNew = qDelta * qOld;
+    qNew.normalize();
+
+    ROS_INFO_STREAM("ORIG  Pose           " << poseString(poseOld.pose) << " YAW: " << yawOld);
+
+    ROS_INFO_STREAM("DELTA Pose (YAW calc)" << poseString(poseDelta.pose)  << " YAW: " << yawDelta);
+    tf2::convert(qDelta, poseDelta.pose.orientation);
+    ROS_INFO_STREAM("DELTA Pose (Qua calc)" << poseString(poseDelta.pose)  << " YAW: " << yawDelta);
+
+    ROS_INFO_STREAM("STEPD Pose (YAW calc)" << poseString(poseNew.pose)  << " YAW: " << yawNew);
+    tf2::convert(qNew, poseNew.pose.orientation);
+    ROS_INFO_STREAM("STEPD Pose (Qua calc)" << poseString(poseNew.pose)  << " YAW: " << yawNew);
+
+    poseOld.pose = poseNew.pose;
+    ROS_INFO_STREAM("Finished Stepping Pose");
+  }
+
+  tf2::Transform getDeltaTF(tf2::Transform curTF, geometry_msgs::Twist& t){
+    tf2::Transform deltaTF;
+    ROS_INFO_STREAM("Started Stepping Pose with Twist " << twistString(t));
+
+    tf2::Quaternion qOld, qDelta, qNew;
+    tf2::convert(curTF.getRotation(), qOld);
+    double yawOld = tf2::getYaw(qOld);
+    double deltaX, deltaY, deltaYaw, rho;
+    rho = t.linear.x * time_step_;
+    deltaYaw = t.angular.z * time_step_;
+
+//    deltaX = (t.linear.x * cos(deltaYaw)  -  t.linear.y * sin(deltaYaw)) * time_step_;
+//    deltaY = (t.linear.x * sin(deltaYaw)  +  t.linear.y * cos(deltaYaw)) * time_step_;
+    deltaX = rho * cos(deltaYaw);
+    deltaY = rho * sin(deltaYaw);
+
+    tf2::Vector3 deltaOrigin(deltaX, deltaY, curTF.getOrigin().getZ());
+    deltaTF.setOrigin(deltaOrigin);
+    qDelta.setRPY(0,0,deltaYaw);
+    deltaTF.setRotation(qDelta);
+
+    std::ostringstream positionSS;
+    positionSS << std::fixed << std::setprecision(2) << "DELTA X POSITION " << deltaX << " DELTA Y POSITION " << deltaY  << " ";
+
+    ROS_INFO_STREAM(positionSS.str());
+
+    ROS_INFO_STREAM("ORIG  TF " << transformString(curTF) <<  yawString(yawOld));
+    ROS_INFO_STREAM("DELTA TF " << transformString(deltaTF)  << yawString(deltaYaw));
+
+    return deltaTF;
 //    tf2::convert(qDelta, poseDelta.pose.orientation);
-//    ROS_INFO_STREAM("DELTA Pose (Qua calc)" << poseString(poseDelta.pose)  << " YAW: " << yawDelta);
-
-//    ROS_INFO_STREAM("STEPD Pose (YAW calc)" << poseString(poseNew.pose)  << " YAW: " << yawNew);
-//    tf2::convert(qNew, poseNew.pose.orientation);
-//    ROS_INFO_STREAM("STEPD Pose (Qua calc)" << poseString(poseNew.pose)  << " YAW: " << yawNew);
-
-//    poseOld.pose = poseNew.pose;
-//    ROS_INFO_STREAM("Finished Stepping Pose");
-//  }
-
-//  tf2::Transform getDeltaTF(tf2::Transform curTF, geometry_msgs::Twist& t){
-//    tf2::Transform deltaTF;
-//    ROS_INFO_STREAM("Started Stepping Pose with Twist " << twistString(t));
-
-//    tf2::Quaternion qOld, qDelta, qNew;
-//    tf2::convert(curTF.getRotation(), qOld);
-//    double yawOld = tf2::getYaw(qOld);
-//    double deltaX, deltaY, deltaYaw, rho;
-//    rho = t.linear.x * time_step_;
-//    deltaYaw = t.angular.z * time_step_;
-
-////    deltaX = (t.linear.x * cos(deltaYaw)  -  t.linear.y * sin(deltaYaw)) * time_step_;
-////    deltaY = (t.linear.x * sin(deltaYaw)  +  t.linear.y * cos(deltaYaw)) * time_step_;
-//    deltaX = rho * cos(deltaYaw);
-//    deltaY = rho * sin(deltaYaw);
-
-//    tf2::Vector3 deltaOrigin(deltaX, deltaY, curTF.getOrigin().getZ());
-//    deltaTF.setOrigin(deltaOrigin);
-//    qDelta.setRPY(0,0,deltaYaw);
-//    deltaTF.setRotation(qDelta);
-
-//    std::ostringstream positionSS;
-//    positionSS << std::fixed << std::setprecision(2) << "DELTA X POSITION " << deltaX << " DELTA Y POSITION " << deltaY  << " ";
-
-//    ROS_INFO_STREAM(positionSS.str());
-
-//    ROS_INFO_STREAM("ORIG  TF " << transformString(curTF) <<  yawString(yawOld));
-//    ROS_INFO_STREAM("DELTA TF " << transformString(deltaTF)  << yawString(deltaYaw));
-
-//    return deltaTF;
-////    tf2::convert(qDelta, poseDelta.pose.orientation);
-////    ROS_INFO_STREAM("DELTA TF (Qua calc)" << poseString(poseDelta.pose)  << " YAW: " << yawDelta);
-//  }
+//    ROS_INFO_STREAM("DELTA TF (Qua calc)" << poseString(poseDelta.pose)  << " YAW: " << yawDelta);
+  }
 
 
-//  tf2::Transform getProjectionToTargetTF(tf2::Transform& base2Proj, tf2::Transform& base2Target){
-//    // AtoC = AtoB * BtoC;
-//    tf2::Transform proj2Base, proj2Target;
-//    proj2Base = base2Proj.inverse();
-//    proj2Target = proj2Base * base2Target;
-//    ROS_INFO_STREAM("GETTING TF FROM PROJECTION TO TARGET " << transformString(proj2Target));
-//    return proj2Target;
-//  }
-
+  tf2::Transform getProjectionToTargetTF(tf2::Transform& base2Proj, tf2::Transform& base2Target){
+    // AtoC = AtoB * BtoC;
+    tf2::Transform proj2Base, proj2Target;
+    proj2Base = base2Proj.inverse();
+    proj2Target = proj2Base * base2Target;
+    ROS_INFO_STREAM("GETTING TF FROM PROJECTION TO TARGET " << transformString(proj2Target));
+    return proj2Target;
+  }
 
 };
 
-#endif // POSECONTROLLERNODE_H
+#endif // PLANNERNODE_H
