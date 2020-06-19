@@ -394,10 +394,11 @@ public:
   }
 
   void startSub(std::string cloud_topic) {
-    cloud_topic = "/" + cloud_topic;
+    // cloud_topic = "/" + cloud_topic;
     ROS_INFO_STREAM("Subscribing to new cloud topic " + cloud_topic_);
     cloudSub_ = nh_.subscribe(cloud_topic, 1, &SegmentLineNode::cloudCallback, this);
-    activationSub_ = nh_.subscribe("/docking/perform_detection", 1, &SegmentLineNode::activationCallback, this);
+    // activationSub_ = nh_.subscribe("docking/perform_detection", 1, &SegmentLineNode::activationCallback, this);
+    activationSub_ = nh_.subscribe("docking/perform_detection", 1, &SegmentLineNode::activationCallback, this);
   }
 
   void clearGlobals(){
@@ -474,7 +475,7 @@ public:
       return;
     }
 
-//    ROS_INFO_STREAM("CLOUD CALLBACK: CLUSTERING RETURNED " << clustersPtr_->clusters.size() << " CLUSTERS");
+   ROS_INFO_STREAM("CLOUD CALLBACK: CLUSTERING RETURNED " << clustersPtr_->clusters.size() << " CLUSTERS");
 
 //    ROS_INFO_STREAM("CLOUD CALLBACK: clusters.combinedCloud.frame_id " << clustersPtr_->combinedCloud.header.frame_id);
 
@@ -491,12 +492,13 @@ public:
       /* ========================================
        * RANSAC LINES FROM CLUSTERS
        * ========================================*/
+     ROS_INFO_STREAM("CLOUD CALLBACK: CALLING RANSAC ON CLUSTERED CLOUD ");
     if(clustersPtr_->clusters.size() > 0){
       lineDetection.getRansacLinesOnCluster(clustersPtr_, linesPtr_);
     }
-//      ROS_INFO_STREAM("CLOUD CALLBACK: CALLING RANSAC ON CLUSTERED CLOUD ");
 
-//    ROS_INFO_STREAM("CLOUD CALLBACK: RAN-CLUS-- COMPLETE");
+
+   ROS_INFO_STREAM("CLOUD CALLBACK: RAN-CLUS-- COMPLETE");
 
     /* ========================================
      * PUBLISH CLOUD

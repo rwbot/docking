@@ -2,6 +2,7 @@
 <launch>
 
 <!--<env name="ROSCONSOLE_CONFIG_FILE" value="$(find docking)/config/custom_rosconsole.conf"/>-->
+				<param name="dock_filepath" value="/home/klondike/shuttle_ws/src/docking/pcd/turtledock_truth_back_origin.pcd"/>
 
     <!-- run laserscan_to_pointcloud node -->
 	<node pkg="docking" type="line_detection_node" name="line_detection_node" output="screen" respawn="false" clear_params="true" >
@@ -11,7 +12,6 @@
 				<!-- <param name="dock_filepath" value="/home/rwbot/dock_ws/src/docking/pcd/dock_crosssection.pcd"/> -->
 				<!-- <param name="dock_filepath" value="/home/rwbot/dock_ws/src/docking/pcd/dock_cloud_docked.pcd"/> -->
 				<!-- <param name="dock_filepath" value="/home/rwbot/dock_ws/src/docking/pcd/dock_cloud_docked_back_origin.pcd"/> -->
-				<param name="dock_filepath" value="/home/rwbot/dock_ws/src/docking/pcd/turtledock_truth_back_origin.pcd"/>
 
 		<rosparam file="$(find docking)/config/line_detection_params.yaml" />
 
@@ -23,6 +23,6 @@
 		<!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" /> -->
 
 	<!-- Start up the dynamic reconfigure GUI. -->
-	<node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure"/>
+	<!-- <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure"/> -->
 
 </launch>
