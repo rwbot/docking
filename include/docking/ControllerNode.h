@@ -9,6 +9,7 @@
 #include <docking/PoseControllerConfig.h>
 #include <docking/ControllerNodeConfig.h>
 #include <docking/Plan.h>
+#include <docking/DockingAction.h>
 // Dynamic reconfigure includes.
 #include <dynamic_reconfigure/server.h>
 
@@ -57,15 +58,23 @@ public:
 
   ros::NodeHandle nh_;
   ros::Publisher cmd_vel_pub_;  // Publisher of commands
+  ros::Publisher detectionActivationPub;
+  ros::Publisher planningActivationPub;
   ros::Subscriber planSub_;
   ros::Subscriber dockPoseSub_;
   tf2_ros::Buffer tfBuffer_;
   tf2_ros::TransformListener tfListener_;
   tf2_ros::TransformBroadcaster tfBroadcaster_;
 
+  //! Bool of detection node status
+  std_msgs::Bool perform_detection_;
+  //! Bool of planning node status
+  std_msgs::Bool perform_planning_;
+
   docking::Plan plan_;
   std::string plan_topic_;
   std::string dock_pose_topic_;
+  std::string cmd_vel_topic_;
   geometry_msgs::PoseStamped dock_pose_;
   geometry_msgs::Twist zeroTwist_;
   bool publish_twist_;
@@ -96,6 +105,7 @@ public:
     if((config.publish_twist == false) && (publish_twist_ == true)){
       cmd_vel_pub_.publish(zeroTwist_);
     }
+    cmd_vel_topic_ = config.cmd_vel_topic;
     publish_twist_ = config.publish_twist;
     time_step_ = config.time_step;
     goal_orientation_tolerance_ = config.goal_orientation_tolerance;
@@ -103,13 +113,25 @@ public:
     dock_pose_topic_ = config.dock_pose_topic;
     plan_topic_ = config.plan_topic;
 //    frequency_ = config.frequency;
-    entrance_dist_ = config.entrance_dist;
+    perform_detection_.data = config.perform_detection;
+    ROS_INFO_STREAM("SETTING DETECTION ACTIVATION STATUS TO  " << perform_detection_.data);
+    perform_planning_.data = config.perform_planning;
+    ROS_INFO_STREAM("SETTING PLANNING ACTIVATION STATUS TO  " << config.perform_planning);
+  }
 
+  void publishActivation(){
+    ROS_INFO_STREAM("PUBLISHING DETECTION ACTIVATION STATUS AS  " << perform_detection_);
+    detectionActivationPub.publish(perform_detection_);
+    ROS_INFO_STREAM("PUBLISHING PLANNING ACTIVATION STATUS AS  " << perform_planning_);
+    planningActivationPub.publish(perform_planning_);
   }
 
   void startPub() {
-    cmd_vel_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 10);
+    cmd_vel_pub_ = nh_.advertise<geometry_msgs::Twist>(cmd_vel_topic_, 10);
+    detectionActivationPub = nh_.advertise<std_msgs::Bool>("docking/perform_detection", 10);
+    planningActivationPub = nh_.advertise<std_msgs::Bool>("docking/perform_planning", 10);
   }
+
 
   void startPlanSub()
   {
@@ -213,6 +235,8 @@ public:
 
     std::cout << "___________________________________________________________________________________________________" << std::endl;
   }
+
+
 
 
 

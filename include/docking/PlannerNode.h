@@ -48,6 +48,7 @@ public:
     startPub();
     startPoseSub();
     initGlobals();
+    startActivationSub();
   }
   ~PlannerNode(){  }
 
@@ -64,10 +65,15 @@ public:
   tf2_ros::TransformBroadcaster tfBroadcaster_;
   docking::Plan plan_;
 
+  ros::Subscriber activationSub_;
+  //! Bool of planning node status
+  std_msgs::Bool perform_planning_;
+
   //! Dynamic reconfigure server.
   dynamic_reconfigure::Server<docking::PlannerNodeConfig> dr_srv_;
   //! Dynamic Reconfig Variables
   std::string dock_frame_;
+  std::string robot_frame_;
   double omega_max_;
   double kPhi_;  // ratio in change of theta to rate of change in r
   double kDelta_;  // speed at which we converge to slow system
@@ -118,6 +124,7 @@ public:
 
   //! Callback function for dynamic reconfigure server.
   void configCallback(docking::PlannerNodeConfig &config, uint32_t level __attribute__((unused))) {
+    robot_frame_ = config.robot_frame;
     omega_max_ = config.omega_max;
     kPhi_ = config.kPhi;
     kDelta_ = config.kDelta;
@@ -164,13 +171,26 @@ public:
     }
   }
 
+  void startActivationSub(){
+    activationSub_ = nh_.subscribe("docking/perform_planning", 1, &PlannerNode::activationCallback, this);
+  }
+
+  void activationCallback(const std_msgs::BoolConstPtr &msg)
+  {
+      if(perform_planning_.data == msg->data){
+        return;
+      }
+      perform_planning_ = *msg;
+      ROS_INFO_STREAM("SETTING PLANNING ACTIVATION STATUS TO  " << perform_planning_);
+    }
+
   void initGlobals(){
     ROS_INFO_STREAM("PlannerNode: Initializing Globals");
     ros::Duration time_step_duration(time_step_);
     time_step_duration_ = time_step_duration;
 //    ros::Rate frequencyRate(frequency_);
 //    frequencyRate_ = frequencyRate;
-    plan_.header.frame_id = plan_.path.header.frame_id = plan_.poseArray.header.frame_id = "base_link";
+    plan_.header.frame_id = plan_.path.header.frame_id = plan_.poseArray.header.frame_id = robot_frame_;
     zeroTwist_.linear.x = zeroTwist_.angular.z = 0.0;
     within_goal_dist_tolerance_ = within_goal_orientation_tolerance_ = false;
     ROS_INFO_STREAM("PlannerNode: Initialized Globals");
@@ -207,7 +227,7 @@ public:
     tf2::Transform base2ProjectionTF, robotTF, base2TargetTF, base2EntranceTF, proj2TargetTF, deltaTF;
     geometry_msgs::TransformStamped base2ProjectionTFMsg, robotTFMsg, base2TargetTFMsg, base2EntranceTFMsg, proj2TargetTFMsg, deltaTFMsg, tempTFMsg;
     geometry_msgs::PoseStamped base2ProjectionPose, robotPose, base2TargetPose, base2EntrancePose, proj2TargetPose, deltaTFPose, target2EntrancePose;
-    std::string projectionFrameID="projection", robotFrameID="base_link", targetFrameID="target", entranceFrameID="entrance";
+    std::string projectionFrameID="projection", robotFrameID=robot_frame_, targetFrameID="target", entranceFrameID="entrance";
 
 //    Init Base to Projection
     base2ProjectionTFMsg.header.frame_id = robotFrameID;
@@ -356,11 +376,11 @@ public:
 //      twist.linear.x = v;
       twist.linear.x = lin_vel_min_;
       ROS_INFO_STREAM("TWIST: " << twistString(twist));
-      if(projGoalDist < entrance_dist_){
-        twist.linear.x *= 0.25;
-        twist.angular.z *= 0.25;
-        ROS_INFO_STREAM("Approaching Target - Twist Scaled Down To " << twistString(twist));
-      }
+//      if(projGoalDist < entrance_dist_){
+//        twist.linear.x *= 0.25;
+//        twist.angular.z *= 0.25;
+//        ROS_INFO_STREAM("Approaching Target - Twist Scaled Down To " << twistString(twist));
+//      }
       if(steps == 0){
         currentTwist = twist;
       }
@@ -447,7 +467,15 @@ public:
   }
 
   void dockPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
-//    ROS_INFO_STREAM("DOCK POSE CALLBACK");
+  ROS_INFO_STREAM("DOCK POSE CALLBACK");
+    
+  // Only perform planning if activated
+  if (perform_planning_.data == false)
+  {
+    ROS_WARN_STREAM("CALLBACK: PLANNING NOT ACTIVATED");
+    return;
+  }
+
     geometry_msgs::PoseStamped pose = *msg;
 //    if(calculateCurrentApproach(pose))
     if(calculatePlan(pose))

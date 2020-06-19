@@ -36,7 +36,10 @@ int main(int argc, char **argv)
 //    SegmentLineNode<PointT> *segmentLineNode = new SegmentLineNode<PointT>(nh);
     SegmentLineNode *segmentLineNode = new SegmentLineNode(nh);
     // Spin
-    ros::spin();
+    while(ros::ok()){
+      ros::spinOnce();
+    }
+
 
     // Success
     return 0;

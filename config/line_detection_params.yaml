@@ -1,6 +1,6 @@
 RS_max_iter:            250
-RS_min_inliers:         5
-RS_dist_thresh:         0.01
+RS_min_inliers:         3
+RS_dist_thresh:         0.02
 RANSAC_on_clusters:     True
 
 Voxel_leaf_size:        0.001

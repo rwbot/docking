@@ -12,19 +12,25 @@ int main(int argc, char **argv)
 {
   ROS_INFO_STREAM("INITIALIZING CONTROLLER NODE");
   // Initialize the ROS Node "line_detection_node"
-  ros::init(argc, argv, "controller");
+  ros::init(argc, argv, "controller_node");
   ros::NodeHandle nh;
   // ros::NodeHandle nh("");
   //    ros::NodeHandle nh("~");
 
   ControllerNode *controllerNode = new ControllerNode(nh);
 
-  // Spin
-  //    while(ros::ok())
-  //    {
-  ros::spin();
-  //    }
+  ros::Rate rate(5);
 
+  // Spin
+  while(ros::ok())
+  {
+    ROS_INFO_STREAM("CONTROLLER SPINNING");
+    controllerNode->publishActivation();
+    ros::spinOnce();
+    rate.sleep();
+  }
+
+  ROS_INFO_STREAM("EXITING NODE");
   // Success
   return 0;
 }

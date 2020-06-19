@@ -18,7 +18,7 @@
         <arg name="world_name" value="$(arg world_name)" />
     </include>
 
-    <include file="$(find docking)/launch/laserscan_to_pointcloud.launch"/>
+    <!-- <include file="$(find docking)/launch/laserscan_to_pointcloud.launch"/> -->
 
     <!-- <include file="$(find docking)/launch/tf_truth.launch">
         <arg name="dock_x" value="$(arg dock_x)" />

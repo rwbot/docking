@@ -29,6 +29,7 @@ find_package(catkin REQUIRED COMPONENTS
   jsk_recognition_msgs
   tf_conversions
   nav_msgs
+  actionlib_msgs
 #  PCL 1.8 REQUIRED
 )
 
@@ -89,11 +90,10 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate actions in the 'action' folder
-# add_action_files(
-#   FILES
-#   Action1.action
-#   Action2.action
-# )
+add_action_files(
+  DIRECTORY action
+  FILES Docking.action
+)
 
 ## Generate added messages and services with any dependencies listed here
  generate_messages(
@@ -105,6 +105,7 @@ find_package(catkin REQUIRED COMPONENTS
    visualization_msgs
    jsk_recognition_msgs
    nav_msgs
+   actionlib_msgs
  )
 
 ################################################
@@ -148,6 +149,7 @@ catkin_package(
                 pcl_conversions
                 pcl_ros
                 message_runtime
+                actionlib_msgs
 #  DEPENDS system_lib
 )
 
