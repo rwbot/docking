@@ -29,6 +29,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
 #include <pcl_ros/transforms.h>
+#include <ros/master.h>
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/String.h>
@@ -80,9 +81,10 @@ public:
     startDynamicReconfigureServer();
     initParams();
     startPub();
-    startSub(cloud_topic_);
+    activationSub();
     initGlobals();
     initDockParams();
+    startCloudSub(cloud_topic_);
   }
   ~SegmentLineNode() {}
 
@@ -328,7 +330,7 @@ public:
     if (config.cloud_topic != cloud_topic_) {
       cloud_topic_ = config.cloud_topic;
       ROS_INFO_STREAM("configCallback: New Input Cloud Topic");
-      startSub(cloud_topic_);
+      startCloudSub(cloud_topic_);
     }
 
 //    if (config.laser_topic != laser_topic_) {
@@ -393,11 +395,36 @@ public:
     icp_out_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZRGB>>("docking/icp_out_pub", 1);
   }
 
-  void startSub(std::string cloud_topic) {
+  void startCloudSub(std::string cloud_topic) {
     // cloud_topic = "/" + cloud_topic;
+    if(!checkTopicExists(cloud_topic)){
+      ROS_WARN_STREAM("Topic " + cloud_topic_ + " does not exist");
+      ROS_WARN_STREAM("Check to see if the topic is corrent or if it is namespaced to continue");
+      return;
+    }
     ROS_INFO_STREAM("Subscribing to new cloud topic " + cloud_topic_);
     cloudSub_ = nh_.subscribe(cloud_topic, 1, &SegmentLineNode::cloudCallback, this);
-    // activationSub_ = nh_.subscribe("docking/perform_detection", 1, &SegmentLineNode::activationCallback, this);
+    if(cloudSub_){
+      ROS_INFO_STREAM("SUCCESSFULLY subscribed to new cloud topic " + cloud_topic_);
+    } else {
+      ROS_WARN_STREAM("FAILED to subscribe to new cloud topic " + cloud_topic_);
+    }
+  }
+
+  bool checkTopicExists(std::string &topic){
+    ros::master::V_TopicInfo topic_infos;
+    ros::master::getTopics(topic_infos);
+    for (int i=0; i < topic_infos.size(); i++){
+      if(topic == topic_infos.at(i).name){
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void activationSub(){
+    // activationSub_ = nh_.subscribe("docking/perform_detection", 1,
+    // &SegmentLineNode::activationCallback, this);
     activationSub_ = nh_.subscribe("docking/perform_detection", 1, &SegmentLineNode::activationCallback, this);
   }
 
@@ -417,7 +444,7 @@ public:
       return;
     }
     perform_detection_ = *msg;
-    ROS_INFO_STREAM("SETTING DETECTION ACTIVATION STATUS TO  " << perform_detection_);
+    ROS_WARN_STREAM("SETTING DETECTION ACTIVATION STATUS TO  " << perform_detection_);
   }
 
   void cloudCallback(const sensor_msgs::PointCloud2ConstPtr &msg) {
