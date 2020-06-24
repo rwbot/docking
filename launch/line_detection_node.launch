@@ -1,8 +1,11 @@
 <?xml version="1.0"?>
 <launch>
 
+<include file="$(find docking)/launch/laserscan_to_pointcloud.launch"/>
+
+
 <!--<env name="ROSCONSOLE_CONFIG_FILE" value="$(find docking)/config/custom_rosconsole.conf"/>-->
-				<param name="dock_filepath" value="/home/klondike/shuttle_ws/src/docking/pcd/turtledock_truth_back_origin.pcd"/>
+				<param name="dock_filepath" value="$(find docking)/pcd/turtledock_truth_back_origin.pcd"/>
 
     <!-- run laserscan_to_pointcloud node -->
 	<node pkg="docking" type="line_detection_node" name="line_detection_node" output="screen" respawn="false" clear_params="true" >
@@ -17,12 +20,12 @@
 
     </node>
 
-		<include file="$(find docking)/launch/laserscan_to_pointcloud.launch"/>
+		
 
 		<!-- <arg name="rvizconfig" default="$(find docking)/config/rviz/docking.rviz" /> -->
 		<!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" /> -->
 
 	<!-- Start up the dynamic reconfigure GUI. -->
-	<!-- <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure"/> -->
+	<node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure"/>
 
 </launch>

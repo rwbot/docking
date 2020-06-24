@@ -162,6 +162,8 @@ public:
   std_msgs::Bool found_dock_;
   //! Bool of detection node status
   std_msgs::Bool perform_detection_;
+  //! Bool of having printed detection node status
+  bool printed_deactivation_status_;
 
   //! Dock Wing Length
   double dock_wing_length;
@@ -208,6 +210,7 @@ public:
     // Set up a dynamic reconfigure server.
     // Do this before parameter server, else some of the parameter server values
     // can be overwritten.
+    ROS_INFO_STREAM("startDynamicReconfigureServer: STARTING DYNAMIC RECONFIGURE SERVER");
     dynamic_reconfigure::Server<docking::SegmentLineConfig>::CallbackType cb;
     cb = boost::bind(&SegmentLineNode::configCallback, this, _1, _2);
     dr_srv_.setCallback(cb);
@@ -327,7 +330,7 @@ public:
     ROS_INFO_STREAM("configCallback:  Max Euclidean Fitness Epsilon " << ICP_max_euclidean_fitness_eps_);
 
 
-    if (config.cloud_topic != cloud_topic_) {
+    if ((config.cloud_topic != "NONE") && (config.cloud_topic != cloud_topic_)) {
       cloud_topic_ = config.cloud_topic;
       ROS_INFO_STREAM("configCallback: New Input Cloud Topic");
       startCloudSub(cloud_topic_);
@@ -396,8 +399,8 @@ public:
   }
 
   void startCloudSub(std::string cloud_topic) {
-    // cloud_topic = "/" + cloud_topic;
-    if(!checkTopicExists(cloud_topic)){
+     std::string ns_cloud_topic = "/" + cloud_topic;
+    if(!checkTopicExists(ns_cloud_topic)){
       ROS_WARN_STREAM("Topic " + cloud_topic_ + " does not exist");
       ROS_WARN_STREAM("Check to see if the topic is corrent or if it is namespaced to continue");
       return;
@@ -415,6 +418,7 @@ public:
     ros::master::V_TopicInfo topic_infos;
     ros::master::getTopics(topic_infos);
     for (int i=0; i < topic_infos.size(); i++){
+      ROS_INFO_STREAM("Check topic #" << i << "  " << topic_infos.at(i).name);
       if(topic == topic_infos.at(i).name){
         return true;
       }
@@ -445,16 +449,21 @@ public:
     }
     perform_detection_ = *msg;
     ROS_WARN_STREAM("SETTING DETECTION ACTIVATION STATUS TO  " << perform_detection_);
+    printed_deactivation_status_ = false;
   }
 
   void cloudCallback(const sensor_msgs::PointCloud2ConstPtr &msg) {
-    ROS_INFO_STREAM("CLOUD CALLBACK: CALLBACK CALLED ");
 
     // Only perform detection if activated
     if(perform_detection_.data == false){
-      ROS_WARN_STREAM("CALLBACK: DETECTION NOT ACTIVATED");
+      if(!printed_deactivation_status_){
+        ROS_WARN_STREAM("cloudCallback: DETECTION NOT ACTIVATED");
+        printed_deactivation_status_ = true;
+      }
       return;
     }
+
+    ROS_INFO_STREAM("CLOUD CALLBACK: CALLBACK CALLED ");
 
     if(msg->width == 0 || msg->row_step == 0){
       ROS_WARN_STREAM("CALLBACK: POINT CLOUD MSG EMPTY ");
