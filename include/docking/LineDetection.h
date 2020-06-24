@@ -52,9 +52,9 @@ public:
 //    ROS_INFO_STREAM("rosifyLine: GETTING CENTROID");
     line.centroid = getCentroid(cloudPCLPtr);
 //    ROS_INFO_STREAM("rosifyLine: GETTING SEGMENT");
-    line.segment = getSegment(cloudPCLPtr);
+//    line.segment = getSegment(cloudPCLPtr);
 //    ROS_INFO_STREAM("rosifyLine: GETTING EUCLIDEAN DISTANCE");
-    line.length.data = getEuclideanDistance(line);
+//    line.length.data = getEuclideanDistance(line);
 ////    ROS_INFO_STREAM("rosifyLine: UPDATING SEGMENT LIST");
 //    updateSegmentList(line);
 ////    ROS_INFO_STREAM("rosifyLine: UPDATING LINE LIST");

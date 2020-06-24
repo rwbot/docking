@@ -12,10 +12,10 @@
 #include <docking/MinMaxPoint.h>
 #include <docking/SegmentLineConfig.h>
 
-#include <jsk_recognition_msgs/BoundingBox.h>
-#include <jsk_recognition_msgs/PolygonArray.h>
-#include <jsk_recognition_msgs/Segment.h>
-#include <jsk_recognition_msgs/SegmentArray.h>
+// #include <jsk_recognition_msgs/BoundingBox.h>
+// #include <jsk_recognition_msgs/PolygonArray.h>
+// #include <jsk_recognition_msgs/Segment.h>
+// #include <jsk_recognition_msgs/SegmentArray.h>
 
 #include <tf/tf.h>
 #include <tf_conversions/tf_eigen.h>
