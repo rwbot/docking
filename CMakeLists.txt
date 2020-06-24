@@ -26,7 +26,6 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_conversions
   pcl_ros
   visualization_msgs
-  # jsk_recognition_msgs
   tf_conversions
   nav_msgs
   actionlib_msgs
@@ -103,7 +102,6 @@ add_action_files(
    pcl_msgs
    sensor_msgs
    visualization_msgs
-  #  jsk_recognition_msgs
    nav_msgs
    actionlib_msgs
  )

@@ -22,11 +22,6 @@
 #include <docking/LineDetection.h>
 #include <docking/PoseEstimation.h>
 
-// #include <jsk_recognition_msgs/BoundingBox.h>
-// #include <jsk_recognition_msgs/PolygonArray.h>
-// #include <jsk_recognition_msgs/Segment.h>
-// #include <jsk_recognition_msgs/SegmentArray.h>
-
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
 #include <ros/ros.h>
