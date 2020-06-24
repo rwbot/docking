@@ -45,10 +45,10 @@ public:
     ROS_INFO_STREAM("INITIALIZING PLANNER NODE OBJECT");
     ROS_INFO_STREAM("STARTING DYNAMIC RECONFIGURE SERVER");
     startDynamicReconfigureServer();
+    startActivationSub();
     startPub();
     startPoseSub();
     initGlobals();
-    startActivationSub();
   }
   ~PlannerNode(){  }
 
@@ -68,6 +68,8 @@ public:
   ros::Subscriber activationSub_;
   //! Bool of planning node status
   std_msgs::Bool perform_planning_;
+  //! Bool of having printed planner node status
+  bool printed_deactivation_status_;
 
   //! Dynamic reconfigure server.
   dynamic_reconfigure::Server<docking::PlannerNodeConfig> dr_srv_;
@@ -117,6 +119,7 @@ public:
   void startDynamicReconfigureServer() {
   // Set up a dynamic reconfigure server.
   // Do this before parameter server, else some of the parameter server values can be overwritten.
+    ROS_INFO_STREAM("startDynamicReconfigureServer: STARTING DYNAMIC RECONFIGURE SERVER");
     dynamic_reconfigure::Server<docking::PlannerNodeConfig>::CallbackType cb;
     cb = boost::bind(&PlannerNode::configCallback, this, _1, _2);
     dr_srv_.setCallback(cb);
@@ -182,6 +185,7 @@ public:
       }
       perform_planning_ = *msg;
       ROS_INFO_STREAM("SETTING PLANNING ACTIVATION STATUS TO  " << perform_planning_);
+      printed_deactivation_status_ = false;
     }
 
   void initGlobals(){
@@ -190,6 +194,7 @@ public:
     time_step_duration_ = time_step_duration;
 //    ros::Rate frequencyRate(frequency_);
 //    frequencyRate_ = frequencyRate;
+    nh_.param("robot_frame", robot_frame_, robot_frame_);
     plan_.header.frame_id = plan_.path.header.frame_id = plan_.poseArray.header.frame_id = robot_frame_;
     zeroTwist_.linear.x = zeroTwist_.angular.z = 0.0;
     within_goal_dist_tolerance_ = within_goal_orientation_tolerance_ = false;
@@ -467,14 +472,17 @@ public:
   }
 
   void dockPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
-  ROS_INFO_STREAM("DOCK POSE CALLBACK");
-    
+
   // Only perform planning if activated
-  if (perform_planning_.data == false)
-  {
-    ROS_WARN_STREAM("CALLBACK: PLANNING NOT ACTIVATED");
+  if (perform_planning_.data == false){
+    if(!printed_deactivation_status_){
+      ROS_WARN_STREAM("dockPoseCallback: PLANNING NOT ACTIVATED");
+      printed_deactivation_status_ = true;
+    }
     return;
   }
+
+  ROS_INFO_STREAM("DOCK POSE CALLBACK");
 
     geometry_msgs::PoseStamped pose = *msg;
 //    if(calculateCurrentApproach(pose))

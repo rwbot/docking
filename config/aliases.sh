@@ -25,6 +25,8 @@ alias rltsd="rcpy; swsd; roslaunch docking turtlebot_sim_dock.launch"
 alias rltd="rcpy; swsd; roslaunch docking turtlebot_dock.launch"
 
 alias rld="swsd; roslaunch docking line_detection_node.launch"
+alias rlc="swsd; roslaunch docking controller_node.launch"
+alias rlp="swsd; roslaunch docking planner_node.launch"
 
 alias rrim="swsd; rosrun dockbot dock_gazebo_interactive_marker"
 alias rlim="swsd; roslaunch dockbot dock_gazebo_interactive_marker.launch"
@@ -37,3 +39,6 @@ alias tb3rob="roslaunch turtlebot3_bringup turtlebot3_robot.launch"
 
 alias tb3up="sshpi; tb3rob"
 alias tb3rem="roslaunch turtlebot3_bringup turtlebot3_remote.launch"
+
+alias swss="source ~/shuttle_ws/devel/setup.bash"
+alias rlss="swss; roslaunch elevator_and_grid_gazebo elevator_world_with_shuttle.launch"

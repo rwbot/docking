@@ -110,24 +110,24 @@ docking::MinMaxPoint getMinMaxPointMsg(typename pcl::PointCloud<pcl::PointXYZRGB
   return minMaxMsg;
 }
 
-double getEuclideanDistance(docking::Line line) {
-  double length, x1, x2, y1, y2;
-  x1 = line.segment.start_point.x;
-  x2 = line.segment.end_point.x;
-  y1 = line.segment.start_point.y;
-  y2 = line.segment.end_point.y;
-//  ROS_INFO_STREAM("getEuclideanDistance");
-//  ROS_INFO_STREAM("SEG: ");
-//  ROS_INFO_STREAM(line.segment);
+// double getEuclideanDistance(docking::Line line) {
+//   double length, x1, x2, y1, y2;
+//   x1 = line.segment.start_point.x;
+//   x2 = line.segment.end_point.x;
+//   y1 = line.segment.start_point.y;
+//   y2 = line.segment.end_point.y;
+// //  ROS_INFO_STREAM("getEuclideanDistance");
+// //  ROS_INFO_STREAM("SEG: ");
+// //  ROS_INFO_STREAM(line.segment);
 
-  double dx = x2-x1;
-  double dy = y2-y1;
+//   double dx = x2-x1;
+//   double dy = y2-y1;
 
-  length = sqrt( dx*dx + dy*dy  );
-//  ROS_INFO_STREAM("EUCLIDEAN DISTANCE: " << length);
-//  std::cout << std::endl;
-  return length;
-}
+//   length = sqrt( dx*dx + dy*dy  );
+// //  ROS_INFO_STREAM("EUCLIDEAN DISTANCE: " << length);
+// //  std::cout << std::endl;
+//   return length;
+// }
 
 double getEuclideanDistance(geometry_msgs::Point p1, geometry_msgs::Point p2) {
   double length, x1, x2, y1, y2;
@@ -140,12 +140,6 @@ double getEuclideanDistance(geometry_msgs::Point p1, geometry_msgs::Point p2) {
   return length;
 }
 
-jsk_recognition_msgs::Segment minMaxToSegment(docking::MinMaxPoint minMax) {
-  jsk_recognition_msgs::Segment segment;
-  segment.start_point = minMax.min;
-  segment.end_point = minMax.max;
-  return segment;
-}
 
 float comparePoints(geometry_msgs::Point p1, geometry_msgs::Point p2){
   float avgDelta;
@@ -159,16 +153,6 @@ float comparePoints(geometry_msgs::Point p1, geometry_msgs::Point p2){
   return avgDelta;
 }
 
-float compareSegments(jsk_recognition_msgs::Segment s1, jsk_recognition_msgs::Segment s2){
-  float avgDelta;
-  avgDelta += comparePoints(s1.start_point, s2.start_point);
-  avgDelta += comparePoints(s1.end_point, s2.end_point);
-  avgDelta = avgDelta/2;
-  if(avgDelta < 0){
-    avgDelta = 0;
-  }
-  return avgDelta;
-}
 
 float compareOrientation(geometry_msgs::Quaternion q1, geometry_msgs::Quaternion q2){
   float avgDelta;
@@ -356,17 +340,6 @@ geometry_msgs::Pose getCentroid(pcl::PointCloud<pcl::PointXYZRGB>::Ptr inCloudPt
 }
 ///////////////// END GET CENTROID /////////////////
 
-///////////////// BEGIN GET SEGMENT /////////////////
-/// \brief getSegment
-/// \param inCloudPtr
-/// \return Segment
-///
-jsk_recognition_msgs::Segment getSegment(pcl::PointCloud<pcl::PointXYZRGB>::Ptr inCloudPtr){
-  docking::MinMaxPoint mmp = getMinMaxPointMsg(inCloudPtr);
-  jsk_recognition_msgs::Segment segment = minMaxToSegment(mmp);
-  return segment;
-}
-///////////////// END GET SEGMENT /////////////////
 
 
 

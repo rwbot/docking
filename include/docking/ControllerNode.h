@@ -6,6 +6,7 @@
 #include <docking/Helpers.h>
 #include <docking/PCLHelpers.h>
 #include <ros/ros.h>
+#include <std_msgs/Bool.h>
 #include <docking/PoseControllerConfig.h>
 #include <docking/ControllerNodeConfig.h>
 #include <docking/Plan.h>
@@ -68,8 +69,10 @@ public:
 
   //! Bool of detection node status
   std_msgs::Bool perform_detection_;
+  bool detection_status_changed_;
   //! Bool of planning node status
   std_msgs::Bool perform_planning_;
+  bool planning_status_changed_;
 
   docking::Plan plan_;
   std::string plan_topic_;
@@ -113,17 +116,42 @@ public:
     dock_pose_topic_ = config.dock_pose_topic;
     plan_topic_ = config.plan_topic;
 //    frequency_ = config.frequency;
-    perform_detection_.data = config.perform_detection;
-    ROS_INFO_STREAM("SETTING DETECTION ACTIVATION STATUS TO  " << perform_detection_.data);
-    perform_planning_.data = config.perform_planning;
-    ROS_INFO_STREAM("SETTING PLANNING ACTIVATION STATUS TO  " << config.perform_planning);
+
+    if(perform_detection_.data != config.perform_detection){
+      perform_detection_.data = config.perform_detection;
+      ROS_INFO_STREAM("SETTING DETECTION ACTIVATION STATUS TO  " << config.perform_detection);
+      detection_status_changed_ = true;
+    }
+    if(perform_planning_.data != config.perform_planning){
+      perform_planning_.data = config.perform_planning;
+      ROS_INFO_STREAM("SETTING PLANNING ACTIVATION STATUS TO  " << config.perform_planning);
+      planning_status_changed_ = true;
+    }
+
   }
 
   void publishActivation(){
-    ROS_INFO_STREAM("PUBLISHING DETECTION ACTIVATION STATUS AS  " << perform_detection_);
+    std::string boolString = "FALSE";
+
     detectionActivationPub.publish(perform_detection_);
-    ROS_INFO_STREAM("PUBLISHING PLANNING ACTIVATION STATUS AS  " << perform_planning_);
+    if(detection_status_changed_){
+      if(perform_detection_.data)
+        boolString = "TRUE";
+      ROS_INFO_STREAM("PUBLISHING DETECTION ACTIVATION STATUS AS  " << boolString);
+      detection_status_changed_ = false;
+    }
+
+    boolString = "FALSE";
+
     planningActivationPub.publish(perform_planning_);
+    if(planning_status_changed_){
+      if(perform_detection_.data)
+        boolString = "TRUE";
+      ROS_INFO_STREAM("PUBLISHING PLANNING ACTIVATION STATUS AS  " << boolString);
+
+      planning_status_changed_ = false;
+    }
+
   }
 
   void startPub() {
@@ -157,6 +185,7 @@ public:
     zeroTwist_.linear.x = zeroTwist_.angular.z = 0.0;
     within_goal_dist_tolerance_ = within_goal_orientation_tolerance_ = false;
     ROS_INFO_STREAM("ControllerNode: Initialized Globals");
+    detection_status_changed_ = planning_status_changed_ = true;
   }
 
   void clearGlobals(){

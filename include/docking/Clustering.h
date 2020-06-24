@@ -65,7 +65,6 @@ docking::Cluster rosifyCluster(pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloudPCLP
 
   clusterMsg.bbox = getBoundingBoxClusterOriented(cloudPCLPtr);
   clusterMsg.bbox.marker = markCluster(clusterMsg);
-  clusterMsg.jbbox = bboxToJSK(clusterMsg.bbox);
 
   return clusterMsg;
 }
@@ -259,39 +258,6 @@ docking::BoundingBox getBoundingBoxClusterOriented(
 }
 ///////////////// END BOUNDING BOX CLUSTER ORIENTED  /////////////////
 
-///////////////// BEGIN BBOX DOCKING TO JSK /////////////////
-/// \brief getBoundingBoxCluster
-/// \param cluster
-/// \return bbox
-///
-jsk_recognition_msgs::BoundingBox bboxToJSK(docking::BoundingBox dbbox) {
-  jsk_recognition_msgs::BoundingBox jbbox;
-  jbbox.header = header_;
-  jbbox.pose = dbbox.pose;
-  jbbox.dimensions = dbbox.dimensions;
-
-//  ROS_INFO_STREAM("bboxToJSK: Dimensions BEFORE: [ " << dbbox.dimensions.x << ", " << dbbox.dimensions.y << ", " << dbbox.dimensions.z << " ]");
-
-  if(!validateDimensions(jbbox.dimensions.x, jbbox.dimensions.y, jbbox.dimensions.z))
-  {
-    ROS_WARN_STREAM(__FILE__ << "::bboxToJSK- BOUNDING BOX DIMENSIONS INVALID [ " << dbbox.dimensions.x << ", " << dbbox.dimensions.y << ", " << dbbox.dimensions.z << " ]");
-    validateDimensions(dbbox.dimensions.x, dbbox.dimensions.y, dbbox.dimensions.z);
-//    ROS_INFO_STREAM("bboxToJSK: Dimensions AFTER: [ " << jbbox.dimensions.x << ", " << jbbox.dimensions.y << ", " << jbbox.dimensions.z << " ]");
-
-    ROS_WARN_STREAM(ros::WallTime::now());
-//    ros::shutdown();
-  }
-
-  //        ROS_INFO_STREAM("dbbox.dimensions: " << dbbox.dimensions);
-  //        ROS_INFO_STREAM("jbbox.dimensions: " << jbbox.dimensions);
-  jbbox.value = 0.5;
-  jbbox.label = 1;
-
-  return jbbox;
-}
-///////////////// END BBOX DOCKING TO JSK /////////////////
-
-
 ///////////////// BEGIN CLUSTER POINTS /////////////////
 /// \brief ClusterPoints
 /// \param cloud
@@ -358,7 +324,6 @@ void ClusterPoints(pcl::PointCloud<pcl::PointXYZRGB>::Ptr inCloud, docking::Clus
 
 //      clusterMsg.bbox = getBoundingBoxClusterOriented(cloudClusterPtr);
 //      clusterMsg.bbox.marker = markCluster(clusterMsg);
-//      clusterMsg.jbbox = bboxToJSK(clusterMsg.bbox);
 
     clustersPtr->clusters.push_back(clusterMsg);
   }

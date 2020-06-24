@@ -17,14 +17,8 @@
 #include <docking/MinMaxPoint.h>
 #include <docking/SegmentLineConfig.h>
 #include <docking/ICP.h>
-
 #include <docking/Clustering.h>
 #include <docking/LineDetection.h>
-
-#include <jsk_recognition_msgs/BoundingBox.h>
-#include <jsk_recognition_msgs/PolygonArray.h>
-#include <jsk_recognition_msgs/Segment.h>
-#include <jsk_recognition_msgs/SegmentArray.h>
 
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
@@ -49,12 +43,6 @@
 #include <pcl/pcl_base.h>
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl/segmentation/sac_segmentation.h>
-#include <pcl/visualization/pcl_visualizer.h>
-#include <pcl/registration/icp.h>
-#include <pcl/registration/icp_nl.h>
-#include <pcl/registration/transformation_estimation_2D.h>
-#include <pcl/registration/transformation_estimation_lm.h>
-#include <pcl/registration/warp_point_rigid_3d.h>
 
 #include <pcl/point_cloud.h>
 //#include <pcl/>
@@ -84,6 +72,7 @@ public:
     activationSub();
     initGlobals();
     initDockParams();
+    ros::Duration(1).sleep(); // Wait for pointcloud_to_laserscan node to init and publish cloud topic
     startCloudSub(cloud_topic_);
   }
   ~SegmentLineNode() {}
@@ -99,7 +88,6 @@ public:
   ros::Publisher dock_pose_marker_pub_;
   ros::Publisher dock_pose_pub_;
   ros::Publisher bbox_pub_;     // Bounding box publisher
-  ros::Publisher jsk_bbox_pub_; // Bounding box publisher
   ros::Publisher debug_pub_;    // debug publisher
   ros::Publisher icp_in_pub_;   // ICP Input Cloud publisher
   ros::Publisher icp_target_pub_; // ICP Target Cloud publisher
@@ -118,8 +106,6 @@ public:
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr dockTargetPCLPtr_;
 
 
-  //! Global list of line segments for publisher
-  jsk_recognition_msgs::SegmentArray segments_;
   //! Global list of line markers for publisher
   visualization_msgs::Marker lines_marker_;
   //! Global list of line msgs for publisher
@@ -170,6 +156,7 @@ public:
 
   //! Dock target template filepath
   std::string dockFilePath_;
+  bool dock_template_loaded_;
   //! ICP Fitness Score Threshold
   double ICP_min_score_;
   //! ICP The maximum distance threshold between two correspondent points
@@ -330,7 +317,7 @@ public:
     ROS_INFO_STREAM("configCallback:  Max Euclidean Fitness Epsilon " << ICP_max_euclidean_fitness_eps_);
 
 
-    if ((config.cloud_topic != "NONE") && (config.cloud_topic != cloud_topic_)) {
+    if ((config.cloud_topic != "") && (config.cloud_topic != cloud_topic_)) {
       cloud_topic_ = config.cloud_topic;
       ROS_INFO_STREAM("configCallback: New Input Cloud Topic");
       startCloudSub(cloud_topic_);
@@ -343,7 +330,7 @@ public:
 
 
     if(dockFilePath_==""){
-      std::cout << "configCallback: dockFilePath FILEPATH NOT SPECIFIED " << dockFilePath_ << std::endl;
+      std::cout << "configCallback: dockFilePath FILEPATH NOT SPECIFIED IN DYNAMIC RECONFIGURE " << dockFilePath_ << std::endl;
     }
     else if (config.dock_filepath != dockFilePath_) {
       dockFilePath_ = config.dock_filepath;
@@ -382,14 +369,12 @@ public:
 
     lines_cloud_pub_ =  nh_.advertise<sensor_msgs::PointCloud2>("docking/linesCloud", 1);
     lines_pub_ = nh_.advertise<docking::LineArray>("docking/lines", 1);
-    line_segment_pub_ = nh_.advertise<jsk_recognition_msgs::SegmentArray>("docking/segments_marker", 1);
     line_marker_pub_ = nh_.advertise<visualization_msgs::Marker>("docking/lines_marker", 1);
 
     dock_marker_pub_ = nh_.advertise<visualization_msgs::Marker>("docking/dock_marker", 1);
     dock_pose_marker_pub_ = nh_.advertise<visualization_msgs::Marker>("docking/dock_pose_marker", 1);
     dock_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("docking/dock_pose", 1);
     bbox_pub_ = nh_.advertise<docking::BoundingBox>("docking/bbox", 1);
-    jsk_bbox_pub_ = nh_.advertise<jsk_recognition_msgs::BoundingBox>("docking/jsk_bbox", 1);
 
     debug_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("docking/debugCloud", 1);
 
@@ -401,24 +386,26 @@ public:
   void startCloudSub(std::string cloud_topic) {
      std::string ns_cloud_topic = "/" + cloud_topic;
     if(!checkTopicExists(ns_cloud_topic)){
-      ROS_WARN_STREAM("Topic " + cloud_topic_ + " does not exist");
-      ROS_WARN_STREAM("Check to see if the topic is corrent or if it is namespaced to continue");
+      ROS_WARN_STREAM("Namespaced Topic " + ns_cloud_topic + " does not exist");
+      ROS_WARN_STREAM("Topic " + cloud_topic + " does not exist");
+      ROS_WARN_STREAM("Check to see if the topic is correct or if it is namespaced to continue");
       return;
     }
     ROS_INFO_STREAM("Subscribing to new cloud topic " + cloud_topic_);
     cloudSub_ = nh_.subscribe(cloud_topic, 1, &SegmentLineNode::cloudCallback, this);
     if(cloudSub_){
-      ROS_INFO_STREAM("SUCCESSFULLY subscribed to new cloud topic " + cloud_topic_);
+      ROS_INFO_STREAM("SUCCESSFULLY subscribed to new cloud topic " + cloud_topic);
     } else {
-      ROS_WARN_STREAM("FAILED to subscribe to new cloud topic " + cloud_topic_);
+      ROS_WARN_STREAM("FAILED to subscribe to new cloud topic " + cloud_topic);
     }
   }
 
   bool checkTopicExists(std::string &topic){
+    ROS_INFO_STREAM("Checking existence of new cloud topic " + topic);
     ros::master::V_TopicInfo topic_infos;
     ros::master::getTopics(topic_infos);
     for (int i=0; i < topic_infos.size(); i++){
-      ROS_INFO_STREAM("Check topic #" << i << "  " << topic_infos.at(i).name);
+//      ROS_INFO_STREAM("Check topic #" << i << "  " << topic_infos.at(i).name);
       if(topic == topic_infos.at(i).name){
         return true;
       }
@@ -433,13 +420,12 @@ public:
   }
 
   void clearGlobals(){
-    segments_.segments.clear();
     lines_.lines.clear();
     lines_marker_.points.clear();
     lines_marker_.colors.clear();
     clustersPtr_->clusters.clear();
     linesPtr_->lines.clear();
-    linesPtr_->segments.clear();
+//    linesPtr_->segments.clear();
   }
 
 
@@ -474,7 +460,7 @@ public:
    clearGlobals();
 
     header_ = msg->header;
-    linesPtr_->header = clustersPtr_->header = clusters_.header = segments_.header = lines_.header = lines_marker_.header = header_;
+    linesPtr_->header = clustersPtr_->header = clusters_.header = lines_.header = lines_marker_.header = header_;
 
   static tf2_ros::TransformBroadcaster tfbr;   
 
@@ -528,13 +514,13 @@ public:
       /* ========================================
        * RANSAC LINES FROM CLUSTERS
        * ========================================*/
-     ROS_INFO_STREAM("CLOUD CALLBACK: CALLING RANSAC ON CLUSTERED CLOUD ");
+//     ROS_INFO_STREAM("CLOUD CALLBACK: CALLING RANSAC ON CLUSTERED CLOUD ");
     if(clustersPtr_->clusters.size() > 0){
       lineDetection.getRansacLinesOnCluster(clustersPtr_, linesPtr_);
     }
 
 
-   ROS_INFO_STREAM("CLOUD CALLBACK: RAN-CLUS-- COMPLETE");
+//   ROS_INFO_STREAM("CLOUD CALLBACK: RAN-CLUS-- COMPLETE");
 
     /* ========================================
      * PUBLISH CLOUD
@@ -552,7 +538,6 @@ public:
 
 //      dock_marker_pub_.publish(dockCluster.bbox.marker);
 //      bbox_pub_.publish(dockCluster.bbox);
-//      jsk_bbox_pub_.publish(clustering.bboxToJSK(dockCluster.bbox));
     }
 
 //    if(clustersPtr_->clusters.size()>0)
@@ -561,19 +546,13 @@ public:
     //          ROS_INFO_STREAM("CALLBACK: Publishing cluster with centroid " <<
     //          pubCluster.centroid);
 
-    if(segments_.segments.size() != 0){
-//      ROS_INFO_STREAM("CLOUD CALLBACK: Publishing " << segments_.segments.size() << " SEGMENTS ");
-      line_marker_pub_.publish(lines_marker_);
-      line_segment_pub_.publish(segments_);
-    }
-
 
 
     /* ========================================
      * ITERATIVE CLOSEST POINT
      * ========================================*/
 
-    ROS_INFO_STREAM("CLOUD CALLBACK: BEGINNING ITERATIVE CLOSEST POINT");
+//    ROS_INFO_STREAM("CLOUD CALLBACK: BEGINNING ITERATIVE CLOSEST POINT");
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr ICPInputCloudPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr ICPOutCloudPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -586,14 +565,11 @@ public:
     poseEstimation.setMaxTransformationEps(ICP_max_transformation_eps_);
     poseEstimation.setMaxEuclideanFitnessEps(ICP_max_euclidean_fitness_eps_);
     bool icpSuccess = poseEstimation.clusterArrayICP(clustersPtr_, dockTargetPCLPtr_,dockClusterPtr);
-    ROS_INFO_STREAM("CLOUD CALLBACK: ICP FINISHED");
+//    ROS_INFO_STREAM("CLOUD CALLBACK: ICP FINISHED");
 
 
-    ROS_INFO_STREAM("CLOUD CALLBACK: SETTING ICPInputCloudPtr HEADER");
     ICPInputCloudPtr->header.frame_id = header_.frame_id;
-    ROS_INFO_STREAM("CLOUD CALLBACK: SETTING dockTargetPCLPtr_ HEADER");
     dockTargetPCLPtr_->header.frame_id = header_.frame_id;
-    ROS_INFO_STREAM("CLOUD CALLBACK: SETTING ICPOutCloudPtr HEADER");
     ICPOutCloudPtr->header.frame_id = header_.frame_id;
 
     if(icpSuccess){
@@ -607,7 +583,6 @@ public:
 //      dock_marker_pub_.publish(dockClusterPtr->bbox.marker);
       dock_marker_pub_.publish(dockClusterPtr->bbox.marker);
       bbox_pub_.publish(dockClusterPtr->bbox);
-      jsk_bbox_pub_.publish(clustering.bboxToJSK(dockClusterPtr->bbox));
 
       dockClusterPtr->icp.transformStamped.header.stamp = ros::Time::now();
       dockClusterPtr->icp.transformStamped.header.frame_id = msg->header.frame_id;
@@ -676,8 +651,6 @@ public:
 //    line.segment = getSegment(cloudPCLPtr);
 ////    ROS_INFO_STREAM("rosifyLine: GETTING EUCLIDEAN DISTANCE");
 //    line.length.data = getEuclideanDistance(line);
-////    ROS_INFO_STREAM("rosifyLine: UPDATING SEGMENT LIST");
-//    updateSegmentList(line);
 ////    ROS_INFO_STREAM("rosifyLine: UPDATING LINE LIST");
 //    updateLineList(line);
 ////    ROS_INFO_STREAM("rosifyLine: MARKING LINE");
@@ -764,7 +737,7 @@ public:
 
       float centroidDelta = comparePoses(l1.centroid, l2.centroid);
       float coefficientDelta = compareCoefficients(l1.coefficients, l2.coefficients);
-      float segmentDelta = compareSegments(l1.segment, l2.segment);
+//      float segmentDelta = compareSegments(l1.segment, l2.segment);
       float pointsDelta = comparePointIndices(l1.points, l2.points);
 
 //       ROS_INFO_STREAM("COMPARING LINES");
@@ -772,7 +745,7 @@ public:
 //       printLineInfo(l2);
 //       ROS_INFO_STREAM("COMPARING LINES DELTA - Centroid: " << centroidDelta << " Points: " << pointsDelta << " Coefficients: " << coefficientDelta << " Segment: " << segmentDelta);
 
-       totalDelta = centroidDelta + coefficientDelta + segmentDelta + pointsDelta;
+       totalDelta = centroidDelta + coefficientDelta /*+ segmentDelta*/ + pointsDelta;
        totalDelta = totalDelta/4;
 
       if (totalDelta <= CL_total_delta){
@@ -809,34 +782,6 @@ public:
       //std::cout << std::endl;
     }
 
-      void updateSegmentList(docking::Line line)
-      {
-//        ROS_INFO_STREAM("COMPARING SEGMENTS");
-        bool doesExist = false;
-        float segmentDelta;
-        for (size_t i =0; i < segments_.segments.size(); i++){
-          segmentDelta = compareSegments(line.segment, segments_.segments.at(i));
-//          ROS_INFO_STREAM("COMPARE SEGMENTS - SEGMENT OF DETECTED LINE " << line.segment);
-//          ROS_INFO_STREAM("COMPARE SEGMENTS - SEGMENT OF SEGMENT LIST INDEX " << i << " " << segments_.segments.at(i));
-//          ROS_INFO_STREAM("COMPARE SEGMENTS - DELTA: " << segmentDelta);
-          if(segmentDelta < CL_segment_delta_){
-            doesExist = true;
-          }
-        }
-
-        if(!doesExist){
-//          ROS_INFO_STREAM("COMPARE SEGMENTS - LINE SEGMENT IS UNIQUE, ADDING TO LIST");
-          segments_.segments.push_back(line.segment);
-        } else if (segments_.segments.size() == 0){
-//          ROS_INFO_STREAM("COMPARE SEGMENTS - LINE SEGMENT IS UNIQUE, ADDING TO LIST");
-          segments_.segments.push_back(line.segment);
-        } else {
-//          ROS_INFO_STREAM("COMPARE SEGMENTS - LINE SEGMENT ALREADY EXISTS");
-        }
-
-//        ROS_INFO_STREAM("COMPARE SEGMENTS - TOTAL SEGMENTS = " << segments_.segments.size());
-//        //std::cout << std::endl;
-      }
 
       bool readPointCloudFile(const std::string& filePath, pcl::PointCloud<pcl::PointXYZRGB>::Ptr PCLPtr) {
 
