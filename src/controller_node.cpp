@@ -24,7 +24,7 @@ int main(int argc, char **argv)
   // Spin
   while(ros::ok())
   {
-    ROS_INFO_STREAM("CONTROLLER SPINNING");
+//    ROS_INFO_STREAM("CONTROLLER SPINNING");
     controllerNode->publishActivation();
     ros::spinOnce();
     rate.sleep();

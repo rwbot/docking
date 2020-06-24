@@ -85,11 +85,12 @@ public:
     registrationPtr->setInputTarget(targetPCLPtr);
 //        ROS_INFO_STREAM("ICP2D--ALIGNING CLOUDS");
     registrationPtr->align(*outCloudPtr);
-    ROS_INFO_STREAM("ICP2D--CHECKING CONVERGENCE");
+//    ROS_INFO_STREAM("ICP2D--CHECKING CONVERGENCE");
     if (registrationPtr->hasConverged())
     {
-      std::cout << "ICP2D converged." << std::endl
-            << "The score is " << registrationPtr->getFitnessScore() << std::endl;
+//      std::cout << "ICP2D converged." << std::endl
+//            << "The score is " << registrationPtr->getFitnessScore() << std::endl;
+      ROS_INFO_STREAM("ICP2D--ICP2D converged with score " << registrationPtr->getFitnessScore());
 //      std::cout << "Transformation matrix:" << std::endl;
 //      std::cout << registrationPtr->getFinalTransformation() << std::endl;
       return true;
@@ -158,10 +159,10 @@ public:
 //      registrationPtr->setTransformationEpsilon(ICP_max_transformation_eps_);
 //      registrationPtr->setEuclideanFitnessEpsilon(ICP_max_euclidean_fitness_eps_);
 
-      ROS_INFO_STREAM("ICP-CLUS-- GET Iterations " << registrationPtr->getMaximumIterations());
-      ROS_INFO_STREAM("ICP-CLUS-- GET Max Correspondence Distance " << registrationPtr->getMaxCorrespondenceDistance());
-      ROS_INFO_STREAM("ICP-CLUS-- GET Max Transformation Epsilon " << registrationPtr->getTransformationEpsilon());
-      ROS_INFO_STREAM("ICP-CLUS-- GET Max Euclidean Fitness Epsilon " << registrationPtr->getEuclideanFitnessEpsilon());
+//      ROS_INFO_STREAM("ICP-CLUS-- GET Iterations " << registrationPtr->getMaximumIterations());
+//      ROS_INFO_STREAM("ICP-CLUS-- GET Max Correspondence Distance " << registrationPtr->getMaxCorrespondenceDistance());
+//      ROS_INFO_STREAM("ICP-CLUS-- GET Max Transformation Epsilon " << registrationPtr->getTransformationEpsilon());
+//      ROS_INFO_STREAM("ICP-CLUS-- GET Max Euclidean Fitness Epsilon " << registrationPtr->getEuclideanFitnessEpsilon());
 
 //      setParams(registrationPtr);
 

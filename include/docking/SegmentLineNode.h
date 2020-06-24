@@ -72,6 +72,7 @@ public:
     activationSub();
     initGlobals();
     initDockParams();
+    ros::Duration(1).sleep(); // Wait for pointcloud_to_laserscan node to init and publish cloud topic
     startCloudSub(cloud_topic_);
   }
   ~SegmentLineNode() {}
@@ -386,25 +387,25 @@ public:
      std::string ns_cloud_topic = "/" + cloud_topic;
     if(!checkTopicExists(ns_cloud_topic)){
       ROS_WARN_STREAM("Namespaced Topic " + ns_cloud_topic + " does not exist");
-      ROS_WARN_STREAM("Topic " + cloud_topic_ + " does not exist");
+      ROS_WARN_STREAM("Topic " + cloud_topic + " does not exist");
       ROS_WARN_STREAM("Check to see if the topic is correct or if it is namespaced to continue");
       return;
     }
     ROS_INFO_STREAM("Subscribing to new cloud topic " + cloud_topic_);
     cloudSub_ = nh_.subscribe(cloud_topic, 1, &SegmentLineNode::cloudCallback, this);
     if(cloudSub_){
-      ROS_INFO_STREAM("SUCCESSFULLY subscribed to new cloud topic " + cloud_topic_);
+      ROS_INFO_STREAM("SUCCESSFULLY subscribed to new cloud topic " + cloud_topic);
     } else {
-      ROS_WARN_STREAM("FAILED to subscribe to new cloud topic " + cloud_topic_);
+      ROS_WARN_STREAM("FAILED to subscribe to new cloud topic " + cloud_topic);
     }
   }
 
   bool checkTopicExists(std::string &topic){
-    ROS_INFO_STREAM("Checking existence of new cloud topic " + cloud_topic_);
+    ROS_INFO_STREAM("Checking existence of new cloud topic " + topic);
     ros::master::V_TopicInfo topic_infos;
     ros::master::getTopics(topic_infos);
     for (int i=0; i < topic_infos.size(); i++){
-      ROS_INFO_STREAM("Check topic #" << i << "  " << topic_infos.at(i).name);
+//      ROS_INFO_STREAM("Check topic #" << i << "  " << topic_infos.at(i).name);
       if(topic == topic_infos.at(i).name){
         return true;
       }
@@ -513,13 +514,13 @@ public:
       /* ========================================
        * RANSAC LINES FROM CLUSTERS
        * ========================================*/
-     ROS_INFO_STREAM("CLOUD CALLBACK: CALLING RANSAC ON CLUSTERED CLOUD ");
+//     ROS_INFO_STREAM("CLOUD CALLBACK: CALLING RANSAC ON CLUSTERED CLOUD ");
     if(clustersPtr_->clusters.size() > 0){
       lineDetection.getRansacLinesOnCluster(clustersPtr_, linesPtr_);
     }
 
 
-   ROS_INFO_STREAM("CLOUD CALLBACK: RAN-CLUS-- COMPLETE");
+//   ROS_INFO_STREAM("CLOUD CALLBACK: RAN-CLUS-- COMPLETE");
 
     /* ========================================
      * PUBLISH CLOUD
@@ -551,7 +552,7 @@ public:
      * ITERATIVE CLOSEST POINT
      * ========================================*/
 
-    ROS_INFO_STREAM("CLOUD CALLBACK: BEGINNING ITERATIVE CLOSEST POINT");
+//    ROS_INFO_STREAM("CLOUD CALLBACK: BEGINNING ITERATIVE CLOSEST POINT");
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr ICPInputCloudPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr ICPOutCloudPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -564,14 +565,11 @@ public:
     poseEstimation.setMaxTransformationEps(ICP_max_transformation_eps_);
     poseEstimation.setMaxEuclideanFitnessEps(ICP_max_euclidean_fitness_eps_);
     bool icpSuccess = poseEstimation.clusterArrayICP(clustersPtr_, dockTargetPCLPtr_,dockClusterPtr);
-    ROS_INFO_STREAM("CLOUD CALLBACK: ICP FINISHED");
+//    ROS_INFO_STREAM("CLOUD CALLBACK: ICP FINISHED");
 
 
-    ROS_INFO_STREAM("CLOUD CALLBACK: SETTING ICPInputCloudPtr HEADER");
     ICPInputCloudPtr->header.frame_id = header_.frame_id;
-    ROS_INFO_STREAM("CLOUD CALLBACK: SETTING dockTargetPCLPtr_ HEADER");
     dockTargetPCLPtr_->header.frame_id = header_.frame_id;
-    ROS_INFO_STREAM("CLOUD CALLBACK: SETTING ICPOutCloudPtr HEADER");
     ICPOutCloudPtr->header.frame_id = header_.frame_id;
 
     if(icpSuccess){
