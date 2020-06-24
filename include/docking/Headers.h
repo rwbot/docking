@@ -4,6 +4,7 @@
 #include <docking/TFHelpers.h>
 #include <docking/Helpers.h>
 #include <docking/PCLHelpers.h>
+#include <docking/PoseHelpers.h>
 // Dynamic reconfigure includes.
 #include <dynamic_reconfigure/server.h>
 // Auto-generated from cfg/ directory.

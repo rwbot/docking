@@ -17,7 +17,7 @@
 
 
 // Topics
-static const std::string INPUT_CLOUD = "/cloud";
+static const std::string INPUT_CLOUD = "cloud";
 static const std::string PUBLISH_TOPIC = "/dockLines";
 
 //typedef pcl::PointXYZI PointT;
@@ -28,15 +28,18 @@ int main(int argc, char **argv)
 {
     // Initialize the ROS Node "line_detection_node"
     ros::init(argc, argv, "line_detection_node");
-    // ros::NodeHandle nh;
+    ros::NodeHandle nh;
     // ros::NodeHandle nh("");
-    ros::NodeHandle nh("~");
+    // ros::NodeHandle nh("~");
 
 //    docking::SegmentLineNode<PointT> *segmentLineNode = new docking::SegmentLineNode<PointT>(nh);
 //    SegmentLineNode<PointT> *segmentLineNode = new SegmentLineNode<PointT>(nh);
     SegmentLineNode *segmentLineNode = new SegmentLineNode(nh);
     // Spin
-    ros::spin();
+    while(ros::ok()){
+      ros::spinOnce();
+    }
+
 
     // Success
     return 0;

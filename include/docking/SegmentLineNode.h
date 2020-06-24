@@ -29,6 +29,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
 #include <pcl_ros/transforms.h>
+#include <ros/master.h>
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/String.h>
@@ -80,12 +81,14 @@ public:
     startDynamicReconfigureServer();
     initParams();
     startPub();
-    startSub(cloud_topic_);
+    activationSub();
     initGlobals();
     initDockParams();
+    startCloudSub(cloud_topic_);
   }
   ~SegmentLineNode() {}
 
+  ros::Publisher status_pub_;
   ros::Publisher clusters_cloud_pub_;
   ros::Publisher clusters_pub_;
   ros::Publisher lines_cloud_pub_;
@@ -101,7 +104,8 @@ public:
   ros::Publisher icp_in_pub_;   // ICP Input Cloud publisher
   ros::Publisher icp_target_pub_; // ICP Target Cloud publisher
   ros::Publisher icp_out_pub_;   // ICP Output Cloud publisher
-  ros::Subscriber sub_;
+  ros::Subscriber cloudSub_;
+  ros::Subscriber activationSub_;
   ros::NodeHandle nh_;
   //! Dynamic reconfigure server.
   dynamic_reconfigure::Server<docking::SegmentLineConfig> dr_srv_;
@@ -155,7 +159,12 @@ public:
   int EC_max_size_;
 
   //! Bool of dock search status
-  bool found_Dock_;
+  std_msgs::Bool found_dock_;
+  //! Bool of detection node status
+  std_msgs::Bool perform_detection_;
+  //! Bool of having printed detection node status
+  bool printed_deactivation_status_;
+
   //! Dock Wing Length
   double dock_wing_length;
 
@@ -201,6 +210,7 @@ public:
     // Set up a dynamic reconfigure server.
     // Do this before parameter server, else some of the parameter server values
     // can be overwritten.
+    ROS_INFO_STREAM("startDynamicReconfigureServer: STARTING DYNAMIC RECONFIGURE SERVER");
     dynamic_reconfigure::Server<docking::SegmentLineConfig>::CallbackType cb;
     cb = boost::bind(&SegmentLineNode::configCallback, this, _1, _2);
     dr_srv_.setCallback(cb);
@@ -320,10 +330,10 @@ public:
     ROS_INFO_STREAM("configCallback:  Max Euclidean Fitness Epsilon " << ICP_max_euclidean_fitness_eps_);
 
 
-    if (config.cloud_topic != cloud_topic_) {
+    if ((config.cloud_topic != "NONE") && (config.cloud_topic != cloud_topic_)) {
       cloud_topic_ = config.cloud_topic;
       ROS_INFO_STREAM("configCallback: New Input Cloud Topic");
-      startSub(cloud_topic_);
+      startCloudSub(cloud_topic_);
     }
 
 //    if (config.laser_topic != laser_topic_) {
@@ -352,6 +362,7 @@ public:
   }
 
   void initGlobals(){
+    found_dock_.data = false;
     docking::ClusterArray temp1 = docking::ClusterArray();
     docking::ClusterArray::Ptr tempPtr (new docking::ClusterArray ());
     clustersPtr_ = tempPtr;
@@ -364,6 +375,8 @@ public:
   }
 
   void startPub() {
+    status_pub_ = nh_.advertise<std_msgs::Bool>("docking/found_dock", 1);
+
     clusters_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("docking/clustersCloud", 1);
     clusters_pub_ = nh_.advertise<docking::ClusterArray>("docking/clusters", 1);
 
@@ -385,10 +398,38 @@ public:
     icp_out_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZRGB>>("docking/icp_out_pub", 1);
   }
 
-  void startSub(std::string cloud_topic) {
-    cloud_topic = "/" + cloud_topic;
+  void startCloudSub(std::string cloud_topic) {
+     std::string ns_cloud_topic = "/" + cloud_topic;
+    if(!checkTopicExists(ns_cloud_topic)){
+      ROS_WARN_STREAM("Topic " + cloud_topic_ + " does not exist");
+      ROS_WARN_STREAM("Check to see if the topic is corrent or if it is namespaced to continue");
+      return;
+    }
     ROS_INFO_STREAM("Subscribing to new cloud topic " + cloud_topic_);
-    sub_ = nh_.subscribe(cloud_topic, 1, &SegmentLineNode::cloudCallback, this);
+    cloudSub_ = nh_.subscribe(cloud_topic, 1, &SegmentLineNode::cloudCallback, this);
+    if(cloudSub_){
+      ROS_INFO_STREAM("SUCCESSFULLY subscribed to new cloud topic " + cloud_topic_);
+    } else {
+      ROS_WARN_STREAM("FAILED to subscribe to new cloud topic " + cloud_topic_);
+    }
+  }
+
+  bool checkTopicExists(std::string &topic){
+    ros::master::V_TopicInfo topic_infos;
+    ros::master::getTopics(topic_infos);
+    for (int i=0; i < topic_infos.size(); i++){
+      ROS_INFO_STREAM("Check topic #" << i << "  " << topic_infos.at(i).name);
+      if(topic == topic_infos.at(i).name){
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void activationSub(){
+    // activationSub_ = nh_.subscribe("docking/perform_detection", 1,
+    // &SegmentLineNode::activationCallback, this);
+    activationSub_ = nh_.subscribe("docking/perform_detection", 1, &SegmentLineNode::activationCallback, this);
   }
 
   void clearGlobals(){
@@ -402,8 +443,26 @@ public:
   }
 
 
+  void activationCallback(const std_msgs::BoolConstPtr &msg){
+    if(perform_detection_.data == msg->data){
+      return;
+    }
+    perform_detection_ = *msg;
+    ROS_WARN_STREAM("SETTING DETECTION ACTIVATION STATUS TO  " << perform_detection_);
+    printed_deactivation_status_ = false;
+  }
 
   void cloudCallback(const sensor_msgs::PointCloud2ConstPtr &msg) {
+
+    // Only perform detection if activated
+    if(perform_detection_.data == false){
+      if(!printed_deactivation_status_){
+        ROS_WARN_STREAM("cloudCallback: DETECTION NOT ACTIVATED");
+        printed_deactivation_status_ = true;
+      }
+      return;
+    }
+
     ROS_INFO_STREAM("CLOUD CALLBACK: CALLBACK CALLED ");
 
     if(msg->width == 0 || msg->row_step == 0){
@@ -452,7 +511,7 @@ public:
       return;
     }
 
-//    ROS_INFO_STREAM("CLOUD CALLBACK: CLUSTERING RETURNED " << clustersPtr_->clusters.size() << " CLUSTERS");
+   ROS_INFO_STREAM("CLOUD CALLBACK: CLUSTERING RETURNED " << clustersPtr_->clusters.size() << " CLUSTERS");
 
 //    ROS_INFO_STREAM("CLOUD CALLBACK: clusters.combinedCloud.frame_id " << clustersPtr_->combinedCloud.header.frame_id);
 
@@ -469,12 +528,13 @@ public:
       /* ========================================
        * RANSAC LINES FROM CLUSTERS
        * ========================================*/
+     ROS_INFO_STREAM("CLOUD CALLBACK: CALLING RANSAC ON CLUSTERED CLOUD ");
     if(clustersPtr_->clusters.size() > 0){
       lineDetection.getRansacLinesOnCluster(clustersPtr_, linesPtr_);
     }
-//      ROS_INFO_STREAM("CLOUD CALLBACK: CALLING RANSAC ON CLUSTERED CLOUD ");
 
-//    ROS_INFO_STREAM("CLOUD CALLBACK: RAN-CLUS-- COMPLETE");
+
+   ROS_INFO_STREAM("CLOUD CALLBACK: RAN-CLUS-- COMPLETE");
 
     /* ========================================
      * PUBLISH CLOUD
@@ -526,10 +586,20 @@ public:
     poseEstimation.setMaxTransformationEps(ICP_max_transformation_eps_);
     poseEstimation.setMaxEuclideanFitnessEps(ICP_max_euclidean_fitness_eps_);
     bool icpSuccess = poseEstimation.clusterArrayICP(clustersPtr_, dockTargetPCLPtr_,dockClusterPtr);
+    ROS_INFO_STREAM("CLOUD CALLBACK: ICP FINISHED");
 
 
-    ICPInputCloudPtr->header.frame_id = dockTargetPCLPtr_->header.frame_id = ICPOutCloudPtr->header.frame_id = header_.frame_id;
+    ROS_INFO_STREAM("CLOUD CALLBACK: SETTING ICPInputCloudPtr HEADER");
+    ICPInputCloudPtr->header.frame_id = header_.frame_id;
+    ROS_INFO_STREAM("CLOUD CALLBACK: SETTING dockTargetPCLPtr_ HEADER");
+    dockTargetPCLPtr_->header.frame_id = header_.frame_id;
+    ROS_INFO_STREAM("CLOUD CALLBACK: SETTING ICPOutCloudPtr HEADER");
+    ICPOutCloudPtr->header.frame_id = header_.frame_id;
+
     if(icpSuccess){
+      ROS_INFO_STREAM("CLOUD CALLBACK: ICP SUCCESSFUL ");
+      found_dock_.data = true;
+
       icp_in_pub_.publish(dockClusterPtr->cloud);
       icp_out_pub_.publish(dockClusterPtr->icpCombinedCloud);
       dock_pose_pub_.publish(dockClusterPtr->icp.poseStamped);
@@ -544,7 +614,10 @@ public:
       dockClusterPtr->icp.transformStamped.child_frame_id = "dock";
 //      tfbr.sendTransform(dockClusterPtr->icp.transformStamped);
       tfBroadcaster_.sendTransform(dockClusterPtr->icp.transformStamped);
-      icp_target_pub_.publish(dockTargetPCLPtr_);
+      icp_target_pub_.publish(dockTargetPCLPtr_);     
+    } else {
+      ROS_WARN_STREAM("CLOUD CALLBACK: ICP FAILED ");
+      found_dock_.data = false;
     }
 
     ////////////////////////////////////////////////////////////////////
@@ -571,6 +644,8 @@ public:
 //        }
 
 //        debug_pub_.publish(transformed_cloud);
+
+    status_pub_.publish(found_dock_);
 
     ROS_INFO_STREAM("CLOUD CALLBACK: CALLBACK COMPLETE");
     std::cout << std::endl;

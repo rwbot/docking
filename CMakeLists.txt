@@ -29,6 +29,7 @@ find_package(catkin REQUIRED COMPONENTS
   jsk_recognition_msgs
   tf_conversions
   nav_msgs
+  actionlib_msgs
 #  PCL 1.8 REQUIRED
 )
 
@@ -89,11 +90,10 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate actions in the 'action' folder
-# add_action_files(
-#   FILES
-#   Action1.action
-#   Action2.action
-# )
+add_action_files(
+  DIRECTORY action
+  FILES Docking.action
+)
 
 ## Generate added messages and services with any dependencies listed here
  generate_messages(
@@ -105,6 +105,7 @@ find_package(catkin REQUIRED COMPONENTS
    visualization_msgs
    jsk_recognition_msgs
    nav_msgs
+   actionlib_msgs
  )
 
 ################################################
@@ -125,6 +126,8 @@ find_package(catkin REQUIRED COMPONENTS
  generate_dynamic_reconfigure_options(
     cfg/SegmentLine.cfg
     cfg/PoseController.cfg
+    cfg/PlannerNode.cfg
+    cfg/ControllerNode.cfg
 #   cfg/DynReconf2.cfg
  )
 
@@ -146,6 +149,7 @@ catkin_package(
                 pcl_conversions
                 pcl_ros
                 message_runtime
+                actionlib_msgs
 #  DEPENDS system_lib
 )
 
@@ -181,6 +185,8 @@ include_directories(
 add_executable(line_detection src/line_detection.cpp)
 add_executable(line_detection_node src/line_detection_node.cpp)
 add_executable(pose_controller_node src/pose_controller_node.cpp)
+add_executable(planner_node src/planner_node.cpp)
+add_executable(controller_node src/controller_node.cpp)
 # add_executable(${PROJECT_NAME} src/line_detection.cpp)
 
 ## Rename C++ executable without prefix
@@ -195,6 +201,8 @@ add_dependencies(
 	line_detection
 	line_detection_node
   pose_controller_node
+  planner_node
+  controller_node
 	${line_detection_EXPORTED_TARGETS}
 	${line_detection_node_EXPORTED_TARGETS}
   ${pose_controller_node_EXPORTED_TARGETS}
@@ -206,11 +214,15 @@ add_dependencies(
 add_dependencies(line_detection ${PROJECT_NAME}_gencfg)
 add_dependencies(line_detection_node ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(pose_controller_node ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
+add_dependencies(planner_node ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
+add_dependencies(controller_node ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(line_detection  ${catkin_LIBRARIES})
 target_link_libraries(line_detection_node  ${catkin_LIBRARIES})
 target_link_libraries(pose_controller_node  ${catkin_LIBRARIES})
+target_link_libraries(planner_node  ${catkin_LIBRARIES})
+target_link_libraries(controller_node  ${catkin_LIBRARIES})
 #############
 ## Install ##
 #############

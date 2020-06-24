@@ -2,17 +2,22 @@
 
 <launch>
 
-    <!-- <arg name="scanner" default="scanner" /> -->
-    <arg name="scanner" default="" />
+    <!-- <arg name="scanner" default="" /> -->
+    <!-- <arg name="scanner" default="russet" /> -->
+    <arg name="scanner" default="yukon" />
 
     <!-- run laserscan_to_pointcloud node -->
     <node pkg="pointcloud_to_laserscan" type="laserscan_to_pointcloud_node" name="laserscan_to_pointcloud">
 
         <!-- <remap from="scan_in" to="$(arg scanner)/scan"/> -->
-        <remap from="scan_in" to="$(arg scanner)/scan"/>
-        <remap from="cloud" to="$(arg scanner)/cloud"/>
+        <!-- <remap from="scan_in" to="scan"/> -->
+        <remap from="cloud" to="cloud"/>
+        <remap from="scan_in" to="$(arg scanner)/front_scan"/>
+        <!-- <remap from="cloud" to="$(arg scanner)/cloud"/> -->
+
+<!-- # target_frame: russet/front_laser -->
         <rosparam>
-            target_frame: laser
+            target_frame: yukon/front_laser
             # target_frame: base_scan # Leave disabled to output pointcloud in scan frame
             transform_tolerance: 0.01
 

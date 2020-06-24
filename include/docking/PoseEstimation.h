@@ -211,7 +211,7 @@ public:
   ///////////////// BEGIN clusterArrayICP /////////////////
   bool clusterArrayICP(docking::ClusterArray::Ptr clustersPtr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr targetPCLPtr, docking::Cluster::Ptr dockClusterPtr)
   {
-//      ROS_INFO_STREAM("ICP-CLUS-ARRAY--BEGINNING ICP ON CLUSTERS ");
+     ROS_INFO_STREAM("ICP-CLUS-ARRAY--BEGINNING ICP ON CLUSTERS ");
     dockClusterPtr->isDock.data = false;
     std::vector<docking::Cluster::Ptr> potential;
     std::vector<int> potentialIndex;
@@ -225,9 +225,9 @@ public:
       *currentClusterPtr = clustersPtr->clusters.at(i);
 
       // Consider only clusters that have enough lines
-      ROS_INFO_STREAM("CURRENT CLUSTER " << i <<  " HAS " << currentClusterPtr->lines.lines.size() << " LINES");
+      ROS_INFO_STREAM("ICP-CLUS-ARRAY--CURRENT CLUSTER " << i <<  " HAS " << currentClusterPtr->lines.lines.size() << " LINES");
       if(currentClusterPtr->lines.lines.size() < 2){
-//        ROS_INFO_STREAM("SKIPPING ICP FOR CURRENT CLUSTER " << i <<  " WITH " << currentClusterPtr->lines.lines.size() << " LINES");
+       ROS_INFO_STREAM("ICP-CLUS-ARRAY--SKIPPING ICP FOR CURRENT CLUSTER " << i <<  " WITH " << currentClusterPtr->lines.lines.size() << " LINES");
         continue;
       }
 
