@@ -329,22 +329,22 @@ public:
 //    }
 
 
-    if(dockFilePath_==""){
-      std::cout << "configCallback: dockFilePath FILEPATH NOT SPECIFIED IN DYNAMIC RECONFIGURE " << dockFilePath_ << std::endl;
-    }
-    else if (config.dock_filepath != dockFilePath_) {
-      dockFilePath_ = config.dock_filepath;
-      ROS_INFO_STREAM("configCallback: New Dock Target File Specified");
-      std::cout << "configCallback: CONFIG FILEPATH: " << config.dock_filepath << std::endl;
-      std::cout << "configCallback: DOCK TARGET FILEPATH: " << dockFilePath_ << std::endl;
-      ROS_INFO_STREAM("configCallback: LOADING DOCK TARGET CLOUD FILE");
-      if(readPointCloudFile(dockFilePath_,dockTargetPCLPtr_) == false){
-        ROS_ERROR_STREAM("configCallback: FAILED TO LOAD TARGET DOCK FILE");
-      } else {
-        ROS_WARN_STREAM("configCallback: SUCCESSFULLY LOADED TARGET DOCK FILE");
-      }
+    // if(dockFilePath_==""){
+    //   std::cout << "configCallback: dockFilePath FILEPATH NOT SPECIFIED IN DYNAMIC RECONFIGURE " << dockFilePath_ << std::endl;
+    // }
+    // else if (config.dock_filepath != dockFilePath_) {
+    //   dockFilePath_ = config.dock_filepath;
+    //   ROS_INFO_STREAM("configCallback: New Dock Target File Specified");
+    //   std::cout << "configCallback: CONFIG FILEPATH: " << config.dock_filepath << std::endl;
+    //   std::cout << "configCallback: DOCK TARGET FILEPATH: " << dockFilePath_ << std::endl;
+    //   ROS_INFO_STREAM("configCallback: LOADING DOCK TARGET CLOUD FILE");
+    //   if(readPointCloudFile(dockFilePath_,dockTargetPCLPtr_) == false){
+    //     ROS_ERROR_STREAM("configCallback: FAILED TO LOAD TARGET DOCK FILE");
+    //   } else {
+    //     ROS_WARN_STREAM("configCallback: SUCCESSFULLY LOADED TARGET DOCK FILE");
+    //   }
 
-    }
+    // }
 
   }
 
@@ -384,13 +384,13 @@ public:
   }
 
   void startCloudSub(std::string cloud_topic) {
-     std::string ns_cloud_topic = "/" + cloud_topic;
-    if(!checkTopicExists(ns_cloud_topic)){
-      ROS_WARN_STREAM("Namespaced Topic " + ns_cloud_topic + " does not exist");
-      ROS_WARN_STREAM("Topic " + cloud_topic + " does not exist");
-      ROS_WARN_STREAM("Check to see if the topic is correct or if it is namespaced to continue");
-      return;
-    }
+    //  std::string ns_cloud_topic = "/" + cloud_topic;
+    // if(!checkTopicExists(cloud_topic)){
+    //   // ROS_WARN_STREAM("Namespaced Topic " + ns_cloud_topic + " does not exist");
+    //   ROS_WARN_STREAM("Topic " + cloud_topic + " does not exist");
+    //   ROS_WARN_STREAM("Check to see if the topic is correct or if it is namespaced to continue");
+    //   return;
+    // }
     ROS_INFO_STREAM("Subscribing to new cloud topic " + cloud_topic_);
     cloudSub_ = nh_.subscribe(cloud_topic, 1, &SegmentLineNode::cloudCallback, this);
     if(cloudSub_){
@@ -405,8 +405,10 @@ public:
     ros::master::V_TopicInfo topic_infos;
     ros::master::getTopics(topic_infos);
     for (int i=0; i < topic_infos.size(); i++){
-//      ROS_INFO_STREAM("Check topic #" << i << "  " << topic_infos.at(i).name);
-      if(topic == topic_infos.at(i).name){
+     ROS_INFO_STREAM("Check topic #" << i << "  " << topic_infos.at(i).name);
+      // if(topic == topic_infos.at(i).name)
+      if(topic_infos.at(i).name.find(topic) != std::string::npos)
+      {
         return true;
       }
     }
