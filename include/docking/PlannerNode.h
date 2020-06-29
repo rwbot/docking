@@ -482,6 +482,8 @@ public:
     return;
   }
 
+  ros::Time beginCallback = ros::Time::now();
+
   ROS_INFO_STREAM("DOCK POSE CALLBACK");
 
     geometry_msgs::PoseStamped pose = *msg;
@@ -494,6 +496,8 @@ public:
 //      ROS_WARN_STREAM("FAILED TO GENERATE PATH");
     }
 
+    ros::Duration total = ros::Time::now() - beginCallback;
+    ROS_WARN_STREAM("PLANNING TOOK " << total.toSec() << " secs");
   }
 
 

@@ -451,7 +451,9 @@ public:
       return;
     }
 
-    ROS_INFO_STREAM("CLOUD CALLBACK: CALLBACK CALLED ");
+    ros::Time beginCallback = ros::Time::now();
+
+    // ROS_INFO_STREAM("CLOUD CALLBACK: CALLBACK CALLED ");
 
     if(msg->width == 0 || msg->row_step == 0){
       ROS_WARN_STREAM("CALLBACK: POINT CLOUD MSG EMPTY ");
@@ -499,7 +501,7 @@ public:
       return;
     }
 
-   ROS_INFO_STREAM("CLOUD CALLBACK: CLUSTERING RETURNED " << clustersPtr_->clusters.size() << " CLUSTERS");
+  //  ROS_INFO_STREAM("CLOUD CALLBACK: CLUSTERING RETURNED " << clustersPtr_->clusters.size() << " CLUSTERS");
 
 //    ROS_INFO_STREAM("CLOUD CALLBACK: clusters.combinedCloud.frame_id " << clustersPtr_->combinedCloud.header.frame_id);
 
@@ -575,7 +577,7 @@ public:
     ICPOutCloudPtr->header.frame_id = header_.frame_id;
 
     if(icpSuccess){
-      ROS_INFO_STREAM("CLOUD CALLBACK: ICP SUCCESSFUL ");
+      // ROS_INFO_STREAM("CLOUD CALLBACK: ICP SUCCESSFUL ");
       found_dock_.data = true;
 
       icp_in_pub_.publish(dockClusterPtr->cloud);
@@ -624,7 +626,9 @@ public:
 
     status_pub_.publish(found_dock_);
 
-    ROS_INFO_STREAM("CLOUD CALLBACK: CALLBACK COMPLETE");
+    // ROS_INFO_STREAM("CLOUD CALLBACK: CALLBACK COMPLETE");
+    ros::Duration total = ros::Time::now() - beginCallback;
+    ROS_INFO_STREAM("DETECTION TOOK " << total.toSec() << " secs");
     std::cout << std::endl;
   }
 
