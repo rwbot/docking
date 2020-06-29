@@ -19,7 +19,7 @@ int main(int argc, char **argv)
 
   ControllerNode *controllerNode = new ControllerNode(nh);
 
-  ros::Rate rate(1);
+  ros::Rate rate(15);
 
   // Spin
   while(ros::ok())
