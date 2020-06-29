@@ -1,9 +1,9 @@
 #ifndef PLANNERNODE_H
 #define PLANNERNODE_H
 
-#include <docking/Headers.h>
-#include <docking/Helpers.h>
-#include <docking/PCLHelpers.h>
+//#include <docking/Headers.h>
+//#include <docking/Helpers.h>
+//#include <docking/PCLHelpers.h>
 #include <docking/Plan.h>
 #include <docking/PlannerNodeConfig.h>
 #include <ros/ros.h>
@@ -12,9 +12,9 @@
 
 #include <tf/transform_listener.h>
 #include <tf2/LinearMath/Quaternion.h>
-#include <tf2/LinearMath/Scalar.h>
+//#include <tf2/LinearMath/Scalar.h>
 #include <tf2/LinearMath/Transform.h>
-#include <tf2/LinearMath/Vector3.h>
+//#include <tf2/LinearMath/Vector3.h>
 #include <tf2/convert.h>
 #include <tf2/impl/convert.h>
 #include <tf2/impl/utils.h>
@@ -31,7 +31,7 @@
 #include <geometry_msgs/Transform.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/Twist.h>
-#include <math.h>
+//#include <math.h>
 #include <nav_msgs/Path.h>
 
 
