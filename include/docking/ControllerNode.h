@@ -203,13 +203,15 @@ public:
     geometry_msgs::Twist currentTwist = plan_.twists.at(1); // First is zero twist at starting pose
 
     if(!willOvershoot(plan_)){
-      ROS_INFO_STREAM("CUERRENT TWIST VALID");
+      ROS_INFO_STREAM("CURRENT TWIST VALID");
       if(publish_twist_){
         ROS_INFO_STREAM("PUBLISHING CURRENT TWIST");
         cmd_vel_pub_.publish(currentTwist);
       }
     } else {
+      cmd_vel_pub_.publish(zeroTwist_);
       ROS_WARN_STREAM("CURRENT TWIST WILL OVERSHOOT TARGET. NOT SENDING TWIST");
+      cmd_vel_pub_.publish(zeroTwist_);
     }
 
   }
@@ -254,7 +256,7 @@ public:
 
     ROS_INFO_STREAM("DELTA X OF CURRENT TWIST PROJECTED & TARGET  " << deltaXProjection2Target);
 
-    if(deltaXProjection2Target < 0){
+    if(deltaXProjection2Target < 0.05){
       return true;
     } else {
       return false;

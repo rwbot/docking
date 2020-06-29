@@ -90,7 +90,7 @@ public:
     {
 //      std::cout << "ICP2D converged." << std::endl
 //            << "The score is " << registrationPtr->getFitnessScore() << std::endl;
-      ROS_INFO_STREAM("ICP2D--ICP2D converged with score " << registrationPtr->getFitnessScore());
+      // ROS_INFO_STREAM("ICP2D--ICP2D converged with score " << registrationPtr->getFitnessScore());
 //      std::cout << "Transformation matrix:" << std::endl;
 //      std::cout << registrationPtr->getFinalTransformation() << std::endl;
       return true;
@@ -178,7 +178,7 @@ public:
         pcl::toROSMsg(*outCloudPCLPtr,ICPCombinedCloud);
         clusterPtr->icpCombinedCloud = ICPCombinedCloud;
 
-        ROS_INFO_STREAM("ICP-CLUS-- GETTING FITNESS SCORE ICP ON CLUSTER ID " << clusterPtr->clusterID.data << " = " << registrationPtr->getFitnessScore());
+        ROS_INFO_STREAM("ICP-CLUS-- ICP SCORE CLUSTER ID " << clusterPtr->clusterID.data << " = " << registrationPtr->getFitnessScore());
         clusterPtr->icp.score = registrationPtr->getFitnessScore();
 
         Eigen::Matrix4f transformation = registrationPtr->getFinalTransformation();
@@ -187,16 +187,17 @@ public:
         transformation = transformation.inverse().eval();
 //        ROS_INFO_STREAM("ICP-CLUS-- INVERTING getFinalTransformation ICP ON CLUSTER ID " << clusterPtr->clusterID.data << "\n" << transformation);
 
-        ROS_INFO_STREAM("ICP-CLUS-- ICP  TRANSFORMATION ON CLUSTER ID " << clusterPtr->clusterID.data << "\n" << transformation);
+        // ROS_INFO_STREAM("ICP-CLUS-- ICP  TRANSFORMATION ON CLUSTER ID " << clusterPtr->clusterID.data << "\n" << transformation);
         clusterPtr->icp.transformStamped = Matrix4TFtoTransform(transformation);
         clusterPtr->icp.poseStamped = Matrix4TFtoPose(transformation);
         clusterPtr->icp.poseStamped.header = header_;
+        ROS_INFO_STREAM("ICP-CLUS-- ICP  TRANSFORMATION ON CLUSTER ID " << clusterPtr->clusterID.data << "\n" << poseString(clusterPtr->icp.poseStamped.pose));
 
-//            ROS_INFO_STREAM("ICP-CLUS-- CLUSTER ID " << clusterPtr->clusterID.data << " POSE: " << clusterPtr->icp.poseStamped);
-//            ROS_INFO_STREAM("ICP-CLUS-- CLUSTER ID " << clusterPtr->clusterID.data << " TRANSFORM: " << clusterPtr->icp.transformStamped);
-//            std::cout << std::endl;
-//            ROS_INFO_STREAM("ICP-CLUS-- CLUSTER ID " << clusterPtr->clusterID.data << " ICP SCORE: " << clusterPtr->icp.score);
-//            ROS_INFO_STREAM("ICP-CLUS-- ICP THRESHOLD SCORE: " << ICP_Min_Score_);
+        //            ROS_INFO_STREAM("ICP-CLUS-- CLUSTER ID " << clusterPtr->clusterID.data << " POSE: " << clusterPtr->icp.poseStamped);
+        //            ROS_INFO_STREAM("ICP-CLUS-- CLUSTER ID " << clusterPtr->clusterID.data << " TRANSFORM: " << clusterPtr->icp.transformStamped);
+        //            std::cout << std::endl;
+        //            ROS_INFO_STREAM("ICP-CLUS-- CLUSTER ID " << clusterPtr->clusterID.data << " ICP SCORE: " << clusterPtr->icp.score);
+        //            ROS_INFO_STREAM("ICP-CLUS-- ICP THRESHOLD SCORE: " << ICP_Min_Score_);
         if(clusterPtr->icp.score < ICP_min_score_){
             clusterPtr->potentialDock.data = true;
             clusterPtr->icp.poseTextMarker = markPose(clusterPtr->icp.poseStamped.pose);
@@ -212,7 +213,7 @@ public:
   ///////////////// BEGIN clusterArrayICP /////////////////
   bool clusterArrayICP(docking::ClusterArray::Ptr clustersPtr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr targetPCLPtr, docking::Cluster::Ptr dockClusterPtr)
   {
-     ROS_INFO_STREAM("ICP-CLUS-ARRAY--BEGINNING ICP ON CLUSTERS ");
+    //  ROS_INFO_STREAM("ICP-CLUS-ARRAY--BEGINNING ICP ON CLUSTERS ");
     dockClusterPtr->isDock.data = false;
     std::vector<docking::Cluster::Ptr> potential;
     std::vector<int> potentialIndex;
@@ -226,9 +227,9 @@ public:
       *currentClusterPtr = clustersPtr->clusters.at(i);
 
       // Consider only clusters that have enough lines
-      ROS_INFO_STREAM("ICP-CLUS-ARRAY--CURRENT CLUSTER " << i <<  " HAS " << currentClusterPtr->lines.lines.size() << " LINES");
+      // ROS_INFO_STREAM("ICP-CLUS-ARRAY--CURRENT CLUSTER " << i <<  " HAS " << currentClusterPtr->lines.lines.size() << " LINES");
       if(currentClusterPtr->lines.lines.size() < 2){
-       ROS_INFO_STREAM("ICP-CLUS-ARRAY--SKIPPING ICP FOR CURRENT CLUSTER " << i <<  " WITH " << currentClusterPtr->lines.lines.size() << " LINES");
+      //  ROS_INFO_STREAM("ICP-CLUS-ARRAY--SKIPPING ICP FOR CURRENT CLUSTER " << i <<  " WITH " << currentClusterPtr->lines.lines.size() << " LINES");
         continue;
       }
 
@@ -280,7 +281,7 @@ public:
         ROS_WARN_STREAM("ICP-CLUS-ARRAY--DOCK SUCCESSFULLY IDENTIFIED AS CLUSTER " << lowestScoreIndex << " !!!!!!!!!!");
     return true;
   }
-      ROS_WARN_STREAM("ICP-CLUS-ARRAY--UNABLE TO IDENTIFY DOCK");
+      ROS_ERROR_STREAM("ICP-CLUS-ARRAY--UNABLE TO IDENTIFY DOCK");
   return false;
   }
   ///////////////// END clusterArrayICP /////////////////
