@@ -16,9 +16,10 @@
         <!-- <remap from="cloud" to="$(arg scanner)/cloud"/> -->
 
 <!-- # target_frame: russet/front_laser -->
+        <!-- target_frame: front_laser -->
         <rosparam>
-            target_frame: front_laser
-            # target_frame: base_scan # Leave disabled to output pointcloud in scan frame
+            
+            target_frame: base_scan # Leave disabled to output pointcloud in scan frame
             transform_tolerance: 0.01
 
             # Concurrency level, affects number of pointclouds queued for processing and number of threads used
