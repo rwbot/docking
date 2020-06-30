@@ -100,8 +100,8 @@ public:
   //! Bool of having printed detection node status
   bool printed_deactivation_status_;
 
-  //! Dock Wing Length
-  double dock_wing_length;
+  //! Entrance distance offset from dock (don't want middle of robot at dock pose)
+  double entrance_dist_;
 
   //! Dock target template filepath
   std::string dockFilePath_;
@@ -190,6 +190,7 @@ public:
     nh_.param("CL_points_delta", CL_points_delta_, CL_points_delta_);
 
     nh_.param("dock_filepath", dockFilePath_, dockFilePath_);
+    nh_.param("entrance_dist", entrance_dist_, entrance_dist_);
 //    nh_.param("ICP_min_score", ICP_min_score_, ICP_min_score_);
 //    nh_.param("ICP_max_corres_dist", ICP_max_correspondence_distance_, ICP_max_correspondence_distance_);
 //    nh_.param("ICP_max_iter", ICP_max_iterations_, ICP_max_iterations_);
@@ -259,6 +260,8 @@ public:
     ICP_max_transformation_eps_ = config.ICP_max_transl_eps;
     ICP_max_transformation_rotation_eps_ = config.ICP_max_rot_eps;
     ICP_max_euclidean_fitness_eps_ = config.ICP_max_eucl_fit_eps;
+
+    entrance_dist_ = config.entrance_dist;
 
     ROS_INFO_STREAM("configCallback:  Iterations " << ICP_max_iterations_);
     ROS_INFO_STREAM("configCallback:  Max Correspondence Distance " << ICP_max_correspondence_distance_);
@@ -542,7 +545,10 @@ public:
       dockClusterPtr->icp.transformStamped.child_frame_id = "dock";
 //      tfbr.sendTransform(dockClusterPtr->icp.transformStamped);
       tfBroadcaster_.sendTransform(dockClusterPtr->icp.transformStamped);
-      icp_target_pub_.publish(dockTargetPCLPtr_);     
+      icp_target_pub_.publish(dockTargetPCLPtr_);
+
+      publishEntrance(dockClusterPtr->icp.transformStamped);
+
     } else {
       ROS_WARN_STREAM("CLOUD CALLBACK: ICP FAILED ");
       found_dock_.data = false;
@@ -579,6 +585,18 @@ public:
     ros::Duration total = ros::Time::now() - beginCallback;
     ROS_INFO_STREAM("DETECTION TOOK " << total.toSec() << " secs");
     std::cout << std::endl;
+  }
+
+  void publishEntrance(geometry_msgs::TransformStamped dockTFMsg)
+  {
+    geometry_msgs::TransformStamped entranceTFMsg = dockTFMsg;
+    entranceTFMsg.child_frame_id = "entrance";
+    tf2::Quaternion qtf;
+    tf2::convert(dockTFMsg.transform.rotation, qtf);
+    double targetYaw = tf2::getYaw(qtf);
+    entranceTFMsg.transform.translation.x -= entrance_dist_ * cos(targetYaw);
+    entranceTFMsg.transform.translation.y -= entrance_dist_ * sin(targetYaw);
+    tfBroadcaster_.sendTransform(entranceTFMsg);
   }
 
 //  ///////////////// BEGIN ROSIFY LINE /////////////////
