@@ -1,70 +1,19 @@
 // -*- mode: c++ -*-
-#ifndef SEGMENTLINENODE_H_
-#define SEGMENTLINENODE_H_
+#ifndef DETECTIONNODE_H_
+#define DETECTIONNODE_H_
 
 #include <docking/Headers.h>
-#include <docking/Helpers.h>
-#include <docking/PCLHelpers.h>
-// Dynamic reconfigure includes.
-#include <dynamic_reconfigure/server.h>
-// Auto-generated from cfg/ directory.
-#include <docking/BoundingBox.h>
-#include <docking/Cluster.h>
-#include <docking/ClusterArray.h>
-#include <docking/Dock.h>
-#include <docking/Line.h>
-#include <docking/LineArray.h>
-#include <docking/MinMaxPoint.h>
-#include <docking/SegmentLineConfig.h>
-#include <docking/ICP.h>
-#include <docking/Clustering.h>
-#include <docking/LineDetection.h>
+#include <docking/DetectionNodeConfig.h>
 
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl_ros/point_cloud.h>
-#include <pcl_ros/transforms.h>
-#include <ros/master.h>
-#include <ros/ros.h>
-#include <std_msgs/Bool.h>
-#include <std_msgs/String.h>
-#include <visualization_msgs/Marker.h>
 
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2_ros/transform_broadcaster.h>
-#include <geometry_msgs/TransformStamped.h>
-
-#include <pcl/cloud_iterator.h>
-#include <pcl/common/common.h>
-#include <pcl/common/transforms.h>
-#include <pcl/filters/extract_indices.h>
-#include <pcl/io/io.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/io/ply_io.h>
-#include <pcl/pcl_base.h>
-#include <pcl/segmentation/extract_clusters.h>
-#include <pcl/segmentation/sac_segmentation.h>
-
-#include <pcl/point_cloud.h>
-//#include <pcl/>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/point_types.h>
-#include <pcl/sample_consensus/ransac.h>
-#include <pcl/sample_consensus/sac_model_line.h>
-
-#include <chrono>
-#include <ctime>
-#include <iostream>
-#include <string>
-#include <vector>
-
- typedef pcl::PointCloud<pcl::PointXYZRGB> POINT;
+typedef pcl::PointCloud<pcl::PointXYZRGB> POINT;
 
 //namespace docking {
 
-class SegmentLineNode {
+class DetectionNode {
 ///////////////// BEGIN VARIABLES /////////////////
 public:
-  SegmentLineNode(ros::NodeHandle nh) :
+  DetectionNode(ros::NodeHandle nh) :
     nh_(nh), tfListener_(tfBuffer_) {
     startDynamicReconfigureServer();
     initParams();
@@ -75,7 +24,7 @@ public:
     ros::Duration(1).sleep(); // Wait for pointcloud_to_laserscan node to init and publish cloud topic
     startCloudSub(cloud_topic_);
   }
-  ~SegmentLineNode() {}
+  ~DetectionNode() {}
 
   ros::Publisher status_pub_;
   ros::Publisher clusters_cloud_pub_;
@@ -96,7 +45,7 @@ public:
   ros::Subscriber activationSub_;
   ros::NodeHandle nh_;
   //! Dynamic reconfigure server.
-  dynamic_reconfigure::Server<docking::SegmentLineConfig> dr_srv_;
+  dynamic_reconfigure::Server<docking::DetectionNodeConfig> dr_srv_;
 
   tf2_ros::Buffer tfBuffer_;
   tf2_ros::TransformListener tfListener_;
@@ -198,8 +147,8 @@ public:
     // Do this before parameter server, else some of the parameter server values
     // can be overwritten.
     ROS_INFO_STREAM("startDynamicReconfigureServer: STARTING DYNAMIC RECONFIGURE SERVER");
-    dynamic_reconfigure::Server<docking::SegmentLineConfig>::CallbackType cb;
-    cb = boost::bind(&SegmentLineNode::configCallback, this, _1, _2);
+    dynamic_reconfigure::Server<docking::DetectionNodeConfig>::CallbackType cb;
+    cb = boost::bind(&DetectionNode::configCallback, this, _1, _2);
     dr_srv_.setCallback(cb);
   }
 
@@ -286,7 +235,7 @@ public:
 }
 
   //! Callback function for dynamic reconfigure server.
-  void configCallback(docking::SegmentLineConfig &config,
+  void configCallback(docking::DetectionNodeConfig &config,
                       uint32_t level __attribute__((unused))) {
 
     RS_max_iter_ = config.RS_max_iter;
@@ -392,7 +341,7 @@ public:
     //   return;
     // }
     ROS_INFO_STREAM("Subscribing to new cloud topic " + cloud_topic_);
-    cloudSub_ = nh_.subscribe(cloud_topic, 1, &SegmentLineNode::cloudCallback, this);
+    cloudSub_ = nh_.subscribe(cloud_topic, 1, &DetectionNode::cloudCallback, this);
     if(cloudSub_){
       ROS_INFO_STREAM("SUCCESSFULLY subscribed to new cloud topic " + cloud_topic);
     } else {
@@ -417,8 +366,8 @@ public:
 
   void activationSub(){
     // activationSub_ = nh_.subscribe("docking/perform_detection", 1,
-    // &SegmentLineNode::activationCallback, this);
-    activationSub_ = nh_.subscribe("docking/perform_detection", 1, &SegmentLineNode::activationCallback, this);
+    // &DetectionNode::activationCallback, this);
+    activationSub_ = nh_.subscribe("docking/perform_detection", 1, &DetectionNode::activationCallback, this);
   }
 
   void clearGlobals(){
@@ -824,5 +773,4 @@ public:
 
 //} // namespace docking
 
-
-#endif /*"SEGMENTLINENODE_H_"*/
+#endif /*"DETECTIONNODE_H_"*/

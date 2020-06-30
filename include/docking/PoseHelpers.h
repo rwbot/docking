@@ -10,7 +10,7 @@
 #include <docking/Line.h>
 #include <docking/LineArray.h>
 #include <docking/MinMaxPoint.h>
-#include <docking/SegmentLineConfig.h>
+//#include <docking/SegmentLineConfig.h>
 
 
 

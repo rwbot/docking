@@ -8,7 +8,7 @@
 				<param name="dock_filepath" value="$(find docking)/pcd/turtledock_truth_back_origin.pcd"/>
 
     <!-- run laserscan_to_pointcloud node -->
-	<node pkg="docking" type="line_detection_node" name="line_detection_node" output="screen" respawn="false" clear_params="true" >
+	<node pkg="docking" type="detection_node" name="detection_node" output="screen" respawn="false" clear_params="true" >
 		<!-- Arguments to allow changing common parameters from the command line or when including this file from other launch files. -->
 <!--                <param name="dock_filepath" value="$(find docking)/pcd/monkey.ply"/>-->
                 <!-- <param name="dock_filepath" value="/home/rwbot/dock_ws/src/docking/pcd/dock_cloud_perfect.pcd"/> -->
@@ -16,7 +16,7 @@
 				<!-- <param name="dock_filepath" value="/home/rwbot/dock_ws/src/docking/pcd/dock_cloud_docked.pcd"/> -->
 				<!-- <param name="dock_filepath" value="/home/rwbot/dock_ws/src/docking/pcd/dock_cloud_docked_back_origin.pcd"/> -->
 
-		<rosparam file="$(find docking)/config/line_detection_params.yaml" />
+		<rosparam file="$(find docking)/config/detection_params.yaml" />
 
     </node>
 

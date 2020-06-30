@@ -1,42 +1,8 @@
 #ifndef CONTROLLERNODE_H
 #define CONTROLLERNODE_H
 
-//#include <docking/Headers.h>
-#include <docking/TFHelpers.h>
-//#include <docking/Helpers.h>
-//#include <docking/PCLHelpers.h>
-#include <ros/ros.h>
-#include <std_msgs/Bool.h>
-#include <docking/PoseControllerConfig.h>
+#include <docking/Headers.h>
 #include <docking/ControllerNodeConfig.h>
-#include <docking/Plan.h>
-#include <docking/DockingAction.h>
-// Dynamic reconfigure includes.
-#include <dynamic_reconfigure/server.h>
-
-#include <tf/transform_listener.h>
-#include <tf2_ros/transform_listener.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <tf2/LinearMath/Transform.h>
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2/LinearMath/Scalar.h>
-#include <tf2/LinearMath/Vector3.h>
-#include <tf2/convert.h>
-#include <tf2/utils.h>
-#include <tf2/impl/utils.h>
-#include <tf2/impl/convert.h>
-#include <tf2/transform_datatypes.h>
-
-#include <geometry_msgs/Twist.h>
-#include <geometry_msgs/Transform.h>
-#include <geometry_msgs/TransformStamped.h>
-#include <geometry_msgs/Quaternion.h>
-#include <geometry_msgs/Pose.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/PoseArray.h>
-#include <nav_msgs/Path.h>
-#include <angles/angles.h>
-#include <math.h>
 
 
 class ControllerNode
