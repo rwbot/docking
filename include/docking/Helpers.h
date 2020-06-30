@@ -10,7 +10,7 @@
 #include <docking/Line.h>
 #include <docking/LineArray.h>
 #include <docking/MinMaxPoint.h>
-#include <docking/SegmentLineConfig.h>
+// #include <docking/DetectionNodeConfig.h>
 
 #include <tf/tf.h>
 #include <tf_conversions/tf_eigen.h>

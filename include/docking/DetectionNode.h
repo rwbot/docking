@@ -1,70 +1,19 @@
 // -*- mode: c++ -*-
-#ifndef SEGMENTLINENODE_H_
-#define SEGMENTLINENODE_H_
+#ifndef DETECTIONNODE_H_
+#define DETECTIONNODE_H_
 
 #include <docking/Headers.h>
-#include <docking/Helpers.h>
-#include <docking/PCLHelpers.h>
-// Dynamic reconfigure includes.
-#include <dynamic_reconfigure/server.h>
-// Auto-generated from cfg/ directory.
-#include <docking/BoundingBox.h>
-#include <docking/Cluster.h>
-#include <docking/ClusterArray.h>
-#include <docking/Dock.h>
-#include <docking/Line.h>
-#include <docking/LineArray.h>
-#include <docking/MinMaxPoint.h>
-#include <docking/SegmentLineConfig.h>
-#include <docking/ICP.h>
-#include <docking/Clustering.h>
-#include <docking/LineDetection.h>
+#include <docking/DetectionNodeConfig.h>
 
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl_ros/point_cloud.h>
-#include <pcl_ros/transforms.h>
-#include <ros/master.h>
-#include <ros/ros.h>
-#include <std_msgs/Bool.h>
-#include <std_msgs/String.h>
-#include <visualization_msgs/Marker.h>
 
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2_ros/transform_broadcaster.h>
-#include <geometry_msgs/TransformStamped.h>
-
-#include <pcl/cloud_iterator.h>
-#include <pcl/common/common.h>
-#include <pcl/common/transforms.h>
-#include <pcl/filters/extract_indices.h>
-#include <pcl/io/io.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/io/ply_io.h>
-#include <pcl/pcl_base.h>
-#include <pcl/segmentation/extract_clusters.h>
-#include <pcl/segmentation/sac_segmentation.h>
-
-#include <pcl/point_cloud.h>
-//#include <pcl/>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/point_types.h>
-#include <pcl/sample_consensus/ransac.h>
-#include <pcl/sample_consensus/sac_model_line.h>
-
-#include <chrono>
-#include <ctime>
-#include <iostream>
-#include <string>
-#include <vector>
-
- typedef pcl::PointCloud<pcl::PointXYZRGB> POINT;
+typedef pcl::PointCloud<pcl::PointXYZRGB> POINT;
 
 //namespace docking {
 
-class SegmentLineNode {
+class DetectionNode {
 ///////////////// BEGIN VARIABLES /////////////////
 public:
-  SegmentLineNode(ros::NodeHandle nh) :
+  DetectionNode(ros::NodeHandle nh) :
     nh_(nh), tfListener_(tfBuffer_) {
     startDynamicReconfigureServer();
     initParams();
@@ -75,7 +24,7 @@ public:
     ros::Duration(1).sleep(); // Wait for pointcloud_to_laserscan node to init and publish cloud topic
     startCloudSub(cloud_topic_);
   }
-  ~SegmentLineNode() {}
+  ~DetectionNode() {}
 
   ros::Publisher status_pub_;
   ros::Publisher clusters_cloud_pub_;
@@ -96,7 +45,7 @@ public:
   ros::Subscriber activationSub_;
   ros::NodeHandle nh_;
   //! Dynamic reconfigure server.
-  dynamic_reconfigure::Server<docking::SegmentLineConfig> dr_srv_;
+  dynamic_reconfigure::Server<docking::DetectionNodeConfig> dr_srv_;
 
   tf2_ros::Buffer tfBuffer_;
   tf2_ros::TransformListener tfListener_;
@@ -198,8 +147,8 @@ public:
     // Do this before parameter server, else some of the parameter server values
     // can be overwritten.
     ROS_INFO_STREAM("startDynamicReconfigureServer: STARTING DYNAMIC RECONFIGURE SERVER");
-    dynamic_reconfigure::Server<docking::SegmentLineConfig>::CallbackType cb;
-    cb = boost::bind(&SegmentLineNode::configCallback, this, _1, _2);
+    dynamic_reconfigure::Server<docking::DetectionNodeConfig>::CallbackType cb;
+    cb = boost::bind(&DetectionNode::configCallback, this, _1, _2);
     dr_srv_.setCallback(cb);
   }
 
@@ -286,7 +235,7 @@ public:
 }
 
   //! Callback function for dynamic reconfigure server.
-  void configCallback(docking::SegmentLineConfig &config,
+  void configCallback(docking::DetectionNodeConfig &config,
                       uint32_t level __attribute__((unused))) {
 
     RS_max_iter_ = config.RS_max_iter;
@@ -329,22 +278,22 @@ public:
 //    }
 
 
-    if(dockFilePath_==""){
-      std::cout << "configCallback: dockFilePath FILEPATH NOT SPECIFIED IN DYNAMIC RECONFIGURE " << dockFilePath_ << std::endl;
-    }
-    else if (config.dock_filepath != dockFilePath_) {
-      dockFilePath_ = config.dock_filepath;
-      ROS_INFO_STREAM("configCallback: New Dock Target File Specified");
-      std::cout << "configCallback: CONFIG FILEPATH: " << config.dock_filepath << std::endl;
-      std::cout << "configCallback: DOCK TARGET FILEPATH: " << dockFilePath_ << std::endl;
-      ROS_INFO_STREAM("configCallback: LOADING DOCK TARGET CLOUD FILE");
-      if(readPointCloudFile(dockFilePath_,dockTargetPCLPtr_) == false){
-        ROS_ERROR_STREAM("configCallback: FAILED TO LOAD TARGET DOCK FILE");
-      } else {
-        ROS_WARN_STREAM("configCallback: SUCCESSFULLY LOADED TARGET DOCK FILE");
-      }
+    // if(dockFilePath_==""){
+    //   std::cout << "configCallback: dockFilePath FILEPATH NOT SPECIFIED IN DYNAMIC RECONFIGURE " << dockFilePath_ << std::endl;
+    // }
+    // else if (config.dock_filepath != dockFilePath_) {
+    //   dockFilePath_ = config.dock_filepath;
+    //   ROS_INFO_STREAM("configCallback: New Dock Target File Specified");
+    //   std::cout << "configCallback: CONFIG FILEPATH: " << config.dock_filepath << std::endl;
+    //   std::cout << "configCallback: DOCK TARGET FILEPATH: " << dockFilePath_ << std::endl;
+    //   ROS_INFO_STREAM("configCallback: LOADING DOCK TARGET CLOUD FILE");
+    //   if(readPointCloudFile(dockFilePath_,dockTargetPCLPtr_) == false){
+    //     ROS_ERROR_STREAM("configCallback: FAILED TO LOAD TARGET DOCK FILE");
+    //   } else {
+    //     ROS_WARN_STREAM("configCallback: SUCCESSFULLY LOADED TARGET DOCK FILE");
+    //   }
 
-    }
+    // }
 
   }
 
@@ -384,15 +333,15 @@ public:
   }
 
   void startCloudSub(std::string cloud_topic) {
-     std::string ns_cloud_topic = "/" + cloud_topic;
-    if(!checkTopicExists(ns_cloud_topic)){
-      ROS_WARN_STREAM("Namespaced Topic " + ns_cloud_topic + " does not exist");
-      ROS_WARN_STREAM("Topic " + cloud_topic + " does not exist");
-      ROS_WARN_STREAM("Check to see if the topic is correct or if it is namespaced to continue");
-      return;
-    }
+    //  std::string ns_cloud_topic = "/" + cloud_topic;
+    // if(!checkTopicExists(cloud_topic)){
+    //   // ROS_WARN_STREAM("Namespaced Topic " + ns_cloud_topic + " does not exist");
+    //   ROS_WARN_STREAM("Topic " + cloud_topic + " does not exist");
+    //   ROS_WARN_STREAM("Check to see if the topic is correct or if it is namespaced to continue");
+    //   return;
+    // }
     ROS_INFO_STREAM("Subscribing to new cloud topic " + cloud_topic_);
-    cloudSub_ = nh_.subscribe(cloud_topic, 1, &SegmentLineNode::cloudCallback, this);
+    cloudSub_ = nh_.subscribe(cloud_topic, 1, &DetectionNode::cloudCallback, this);
     if(cloudSub_){
       ROS_INFO_STREAM("SUCCESSFULLY subscribed to new cloud topic " + cloud_topic);
     } else {
@@ -405,8 +354,10 @@ public:
     ros::master::V_TopicInfo topic_infos;
     ros::master::getTopics(topic_infos);
     for (int i=0; i < topic_infos.size(); i++){
-//      ROS_INFO_STREAM("Check topic #" << i << "  " << topic_infos.at(i).name);
-      if(topic == topic_infos.at(i).name){
+     ROS_INFO_STREAM("Check topic #" << i << "  " << topic_infos.at(i).name);
+      // if(topic == topic_infos.at(i).name)
+      if(topic_infos.at(i).name.find(topic) != std::string::npos)
+      {
         return true;
       }
     }
@@ -415,8 +366,8 @@ public:
 
   void activationSub(){
     // activationSub_ = nh_.subscribe("docking/perform_detection", 1,
-    // &SegmentLineNode::activationCallback, this);
-    activationSub_ = nh_.subscribe("docking/perform_detection", 1, &SegmentLineNode::activationCallback, this);
+    // &DetectionNode::activationCallback, this);
+    activationSub_ = nh_.subscribe("docking/perform_detection", 1, &DetectionNode::activationCallback, this);
   }
 
   void clearGlobals(){
@@ -449,7 +400,9 @@ public:
       return;
     }
 
-    ROS_INFO_STREAM("CLOUD CALLBACK: CALLBACK CALLED ");
+    ros::Time beginCallback = ros::Time::now();
+
+    // ROS_INFO_STREAM("CLOUD CALLBACK: CALLBACK CALLED ");
 
     if(msg->width == 0 || msg->row_step == 0){
       ROS_WARN_STREAM("CALLBACK: POINT CLOUD MSG EMPTY ");
@@ -497,7 +450,7 @@ public:
       return;
     }
 
-   ROS_INFO_STREAM("CLOUD CALLBACK: CLUSTERING RETURNED " << clustersPtr_->clusters.size() << " CLUSTERS");
+  //  ROS_INFO_STREAM("CLOUD CALLBACK: CLUSTERING RETURNED " << clustersPtr_->clusters.size() << " CLUSTERS");
 
 //    ROS_INFO_STREAM("CLOUD CALLBACK: clusters.combinedCloud.frame_id " << clustersPtr_->combinedCloud.header.frame_id);
 
@@ -573,7 +526,7 @@ public:
     ICPOutCloudPtr->header.frame_id = header_.frame_id;
 
     if(icpSuccess){
-      ROS_INFO_STREAM("CLOUD CALLBACK: ICP SUCCESSFUL ");
+      // ROS_INFO_STREAM("CLOUD CALLBACK: ICP SUCCESSFUL ");
       found_dock_.data = true;
 
       icp_in_pub_.publish(dockClusterPtr->cloud);
@@ -622,7 +575,9 @@ public:
 
     status_pub_.publish(found_dock_);
 
-    ROS_INFO_STREAM("CLOUD CALLBACK: CALLBACK COMPLETE");
+    // ROS_INFO_STREAM("CLOUD CALLBACK: CALLBACK COMPLETE");
+    ros::Duration total = ros::Time::now() - beginCallback;
+    ROS_INFO_STREAM("DETECTION TOOK " << total.toSec() << " secs");
     std::cout << std::endl;
   }
 
@@ -818,5 +773,4 @@ public:
 
 //} // namespace docking
 
-
-#endif /*"SEGMENTLINENODE_H_"*/
+#endif /*"DETECTIONNODE_H_"*/

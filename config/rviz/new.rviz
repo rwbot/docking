@@ -4,10 +4,10 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
+        - /Global Options1
         - /ICP1/Target1
         - /TF1/Frames1
         - /PoseArray1/Status1
-        - /Odometry1/Status1
         - /Odometry1/Shape1
       Splitter Ratio: 0.618677020072937
     Tree Height: 755
@@ -228,7 +228,7 @@ Visualization Manager:
       Size (Pixels): 10
       Size (m): 0.009999999776482582
       Style: Points
-      Topic: /line_detection_node/docking/clustersCloud
+      Topic: /docking/clustersCloud
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -487,7 +487,7 @@ Visualization Manager:
       Buffer Length: 1
       Class: rviz/Path
       Color: 249; 16; 227
-      Enabled: true
+      Enabled: false
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.15000000596046448
@@ -505,7 +505,7 @@ Visualization Manager:
       Shaft Length: 0.10000000149011612
       Topic: /docking/path
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Arrow Length: 0.05000000074505806
       Axes Length: 0.30000001192092896
@@ -560,7 +560,7 @@ Visualization Manager:
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: odom
+    Fixed Frame: base_link
     Frame Rate: 30
   Name: root
   Tools:
@@ -593,11 +593,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 621.1187744140625
+      Scale: 1141.3096923828125
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 0.03603753075003624
-      Y: -0.06324513256549835
+      X: 0.2645910084247589
+      Y: -0.03565429151058197
     Saved: ~
 Window Geometry:
   Displays:

@@ -122,7 +122,7 @@ add_action_files(
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
  generate_dynamic_reconfigure_options(
-    cfg/SegmentLine.cfg
+    cfg/DetectionNode.cfg
     cfg/PoseController.cfg
     cfg/PlannerNode.cfg
     cfg/ControllerNode.cfg
@@ -180,9 +180,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(line_detection src/line_detection.cpp)
-add_executable(line_detection_node src/line_detection_node.cpp)
-add_executable(pose_controller_node src/pose_controller_node.cpp)
+add_executable(detection_node src/detection_node.cpp)
 add_executable(planner_node src/planner_node.cpp)
 add_executable(controller_node src/controller_node.cpp)
 # add_executable(${PROJECT_NAME} src/line_detection.cpp)
@@ -196,29 +194,21 @@ add_executable(controller_node src/controller_node.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(
-	line_detection
-	line_detection_node
-  pose_controller_node
+	detection_node
   planner_node
   controller_node
-	${line_detection_EXPORTED_TARGETS}
-	${line_detection_node_EXPORTED_TARGETS}
-  ${pose_controller_node_EXPORTED_TARGETS}
+	${detection_node_EXPORTED_TARGETS}
 	${catkin_EXPORTED_TARGETS}
 )
 
 
 
-add_dependencies(line_detection ${PROJECT_NAME}_gencfg)
-add_dependencies(line_detection_node ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
-add_dependencies(pose_controller_node ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
+add_dependencies(detection_node ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(planner_node ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(controller_node ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(line_detection  ${catkin_LIBRARIES})
-target_link_libraries(line_detection_node  ${catkin_LIBRARIES})
-target_link_libraries(pose_controller_node  ${catkin_LIBRARIES})
+target_link_libraries(detection_node  ${catkin_LIBRARIES})
 target_link_libraries(planner_node  ${catkin_LIBRARIES})
 target_link_libraries(controller_node  ${catkin_LIBRARIES})
 #############
