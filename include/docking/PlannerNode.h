@@ -38,7 +38,7 @@
 class PlannerNode
 {
 public:
-  PlannerNode(ros::NodeHandle &nh) : 
+  PlannerNode(ros::NodeHandle &nh) :
     nh_(nh), tfListener_(tfBuffer_)
   {
     //    nh_ = nh;
@@ -201,10 +201,17 @@ public:
     ROS_INFO_STREAM("PlannerNode: Initialized Globals");
   }
 
-  void clearGlobals(){
+  void clearPlan(){
     plan_.path.poses.clear();
     plan_.poseArray.poses.clear();
     plan_.twists.clear();
+  }
+
+  void pubEmptyPlan(){
+    clearPlan();
+    path_pub_.publish(plan_.path);
+    pose_array_pub_.publish(plan_.poseArray);
+    plan_pub_.publish(plan_);
   }
 
   ///////////////// BEGIN CALCULATE PLAN /////////////////
@@ -224,7 +231,7 @@ public:
 //      return true;
 //    }
 
-    clearGlobals();
+    clearPlan();
     geometry_msgs::Twist twist, currentTwist;
     int steps = 0;
 
@@ -292,13 +299,14 @@ public:
 
     // Distance to goal
     double currentGoalDist, projGoalDist;
+    // Dot (radial) distance to goal
     currentGoalDist = projGoalDist = proj2TargetTF.getOrigin().length();
-    ROS_INFO_STREAM("GETTING DISTANCE TO GOAL: " << currentGoalDist);
+    ROS_INFO_STREAM("GETTING RADIAL DISTANCE TO GOAL: " << currentGoalDist);
     double deltaAngle = 1.0;
     // If within distance tolerance, return true
     if ((currentGoalDist < goal_dist_tolerance_) && (fabs(deltaAngle) < goal_orientation_tolerance_))
     {
-      ROS_WARN_STREAM("WITHIN DISTANCE TOLERANCE. GOAL REACHED");
+      ROS_WARN_STREAM("WITHIN RADIAL DISTANCE TOLERANCE. GOAL REACHED");
       return true;
     }
 
@@ -321,7 +329,7 @@ public:
         break;
       }
 
-      ROS_INFO_STREAM("PROJ DIST TO GOAL = " << projGoalDist << " > " << goal_dist_tolerance_);
+      ROS_INFO_STREAM("PROJ RADIAL DIST TO GOAL = " << projGoalDist << " > " << goal_dist_tolerance_);
 //      // Orientation base frame relative to r_
 
       deltaAngle = getDeltaAngle(proj2TargetPose.pose.position.y, proj2TargetPose.pose.position.x);
@@ -397,7 +405,7 @@ public:
 //      ROS_INFO_STREAM("STEPPING POSE");
       deltaTFMsg = base2ProjectionTFMsg;
 //      syncTFData(deltaTFMsg,deltaTF,deltaTFPose);
-      deltaTF = getDeltaTF(base2ProjectionTF,twist);
+      deltaTF = getDeltaTFFromTwist(base2ProjectionTF, twist);
       syncTFData(deltaTF,deltaTFMsg,deltaTFPose,robotFrameID,projectionFrameID);
       deltaTFMsg.header.stamp = base2ProjectionTFMsg.header.stamp + time_step_duration_;
       tempTFMsg = base2ProjectionTFMsg;
@@ -409,14 +417,14 @@ public:
 
 
 
-      ROS_INFO_STREAM("GETTING DISTANCE BETWEEN UPDATED TARGET & STEPPED POSE");
+      ROS_INFO_STREAM("GETTING RADIAL DISTANCE BETWEEN UPDATED TARGET & STEPPED POSE");
       double oldProjGoalDist = projGoalDist;
       proj2TargetTF = getProjectionToTargetTF(base2ProjectionTF,base2TargetTF);
       syncTFData(proj2TargetTF,proj2TargetTFMsg,proj2TargetPose,projectionFrameID,targetFrameID);
       projGoalDist = proj2TargetTF.getOrigin().length();
       std::ostringstream gdSS;
       gdSS << std::fixed << std::setprecision(4) << "OLD: " << oldProjGoalDist << " NEW: " << projGoalDist;
-      ROS_INFO_STREAM("GOAL DISTANCE " << gdSS.str());
+      ROS_INFO_STREAM("RADIAL GOAL DISTANCE " << gdSS.str());
 
       ROS_INFO_STREAM("END PATH STEP #" << steps);
 
@@ -425,14 +433,28 @@ public:
 
       if (projGoalDist > oldProjGoalDist)
       {
-        ROS_WARN_STREAM("STEPPED POSE INCREASING GOAL DIST ERROR");
+        ROS_WARN_STREAM("STEPPED POSE INCREASING RADIAL GOAL DIST ERROR");
         base2ProjectionTFMsg = tempTFMsg;
         syncTFData(base2ProjectionTFMsg, base2ProjectionTF, base2ProjectionPose);
 //        break;
       }
 
+      // Check if projected distance is past the X value of target
+      double projDistX = proj2TargetTF.getOrigin().getX();
+      ROS_WARN_STREAM("GETTING X DISTANCE TO GOAL: " << projDistX);
+
+      if(projDistX < 0){
+        std::cout << std::endl;
+        ROS_ERROR_STREAM("UNABLE TO CALCULATE PRACTICAL PLAN");
+        ROS_WARN_STREAM("STEPPED POSE PAST GOAL AND WILL RESULT IN LOOP-AROUND PATH");
+        ROS_WARN_STREAM("ANGULAR VELOCITY MAY BE INSUFFICIENT");
+        std::cout << std::endl;
+//        pubEmptyPlan();
+        return false;
+      }
+
       if(projGoalDist <= goal_dist_tolerance_){
-        ROS_WARN_STREAM("CURRENT PROJECTION STEP WITHIN DISTANCE TOLERANCE");
+        ROS_WARN_STREAM("CURRENT PROJECTION STEP WITHIN RADIAL DISTANCE TOLERANCE");
         within_goal_dist_tolerance_ = true;
         if (fabs(deltaAngle) <= goal_orientation_tolerance_){
           ROS_WARN_STREAM("CURRENT PROJECTION STEP WITHIN ANGLE TOLERANCE");
@@ -493,7 +515,7 @@ public:
       ROS_INFO_STREAM("SUCCESSFULLY GENERATED PATH");
     }
     else {
-//      ROS_WARN_STREAM("FAILED TO GENERATE PATH");
+     ROS_ERROR_STREAM("FAILED TO GENERATE PATH");
     }
 
     ros::Duration total = ros::Time::now() - beginCallback;
@@ -690,7 +712,7 @@ public:
     ROS_INFO_STREAM("Finished Stepping Pose");
   }
 
-  tf2::Transform getDeltaTF(tf2::Transform curTF, geometry_msgs::Twist& t){
+  tf2::Transform getDeltaTFFromTwist(tf2::Transform curTF, geometry_msgs::Twist& t){
     tf2::Transform deltaTF;
     ROS_INFO_STREAM("Started Stepping Pose with Twist " << twistString(t));
 
