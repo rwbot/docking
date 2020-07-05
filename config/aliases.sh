@@ -26,6 +26,7 @@ alias rltd="rcpy; swsd; roslaunch docking turtlebot_dock.launch"
 
 alias rld="swsd; roslaunch docking detection_node.launch"
 alias rlc="swsd; roslaunch docking controller_node.launch"
+alias rlhp="swsd; roslaunch docking holonomic_planner_node.launch"
 alias rlp="swsd; roslaunch docking planner_node.launch"
 
 alias rrim="swsd; rosrun dockbot dock_gazebo_interactive_marker"

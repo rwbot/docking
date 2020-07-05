@@ -4,14 +4,12 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Global Options1
-        - /Scan1/Status1
-        - /Scan Cloud1/Status1
+        - /Status1
         - /ICP1/Target1
         - /TF1/Frames1
         - /Odometry1/Shape1
       Splitter Ratio: 0.618677020072937
-    Tree Height: 726
+    Tree Height: 728
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -30,7 +28,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: Scan
+    SyncSource: Scan Cloud
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -66,9 +64,75 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
+        base_footprint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        base_link_fl_wheel_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        base_link_fr_wheel_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        base_link_rl_wheel_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        base_link_rr_wheel_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        extractor_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        extractor_carriage_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        extractor_hook_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        front_laser:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        front_laser_mount_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        rear_laser:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        rear_laser_mount_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        scissor_lift_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
       Name: RobotModel
-      Robot Description: yukon/robot_description
-      TF Prefix: yukon
+      Robot Description: robot_description
+      TF Prefix: ""
       Update Interval: 0
       Value: true
       Visual Enabled: true
@@ -81,7 +145,7 @@ Visualization Manager:
       Show Visual Aids: false
       Update Topic: /dock_interactive_marker/update
       Value: true
-    - Alpha: 1
+    - Alpha: 0.10000000149011612
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
         Max Value: 10
@@ -93,7 +157,7 @@ Visualization Manager:
       Color: 239; 41; 41
       Color Transformer: FlatColor
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 0
@@ -106,11 +170,11 @@ Visualization Manager:
       Size (Pixels): 3
       Size (m): 0.009999999776482582
       Style: Points
-      Topic: /yukon/scan
+      Topic: /yukon/front_scan
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -141,7 +205,7 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: false
-    - Alpha: 0.10000000149011612
+    - Alpha: 0.05000000074505806
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
         Max Value: 10
@@ -193,7 +257,7 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 10
+      Size (Pixels): 3
       Size (m): 0.009999999776482582
       Style: Points
       Topic: /docking/clustersCloud
@@ -213,7 +277,7 @@ Visualization Manager:
       Color: 238; 238; 236
       Color Transformer: RGB8
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 0
@@ -223,14 +287,14 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 10
+      Size (Pixels): 5
       Size (m): 0.009999999776482582
       Style: Points
       Topic: /docking/linesCloud
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 0.10000000149011612
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -387,13 +451,87 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
+        base_footprint:
+          Value: true
+        base_link:
+          Value: true
+        base_link_fl_wheel_link:
+          Value: true
+        base_link_fr_wheel_link:
+          Value: true
+        base_link_rl_wheel_link:
+          Value: true
+        base_link_rr_wheel_link:
+          Value: true
+        dock:
+          Value: true
+        dock_link:
+          Value: true
+        elevator_base_link:
+          Value: true
+        elevator_carriage_link:
+          Value: true
+        entrance:
+          Value: true
+        extractor_base_link:
+          Value: true
+        extractor_carriage_link:
+          Value: true
+        extractor_hook_link:
+          Value: true
+        front_laser:
+          Value: true
+        front_laser_mount_link:
+          Value: true
+        level_1_rail:
+          Value: true
+        level_2_rail:
+          Value: true
+        level_3_rail:
+          Value: true
+        level_4_rail:
+          Value: true
+        odom:
+          Value: true
+        rear_laser:
+          Value: true
+        rear_laser_mount_link:
+          Value: true
+        scissor_lift_base_link:
+          Value: true
+        world:
+          Value: true
       Marker Scale: 0.20000000298023224
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
-        {}
+        odom:
+          base_footprint:
+            base_link:
+              base_link_fl_wheel_link:
+                {}
+              base_link_fr_wheel_link:
+                {}
+              base_link_rl_wheel_link:
+                {}
+              base_link_rr_wheel_link:
+                {}
+              front_laser_mount_link:
+                front_laser:
+                  dock:
+                    {}
+                  entrance:
+                    {}
+              rear_laser_mount_link:
+                rear_laser:
+                  {}
+              scissor_lift_base_link:
+                extractor_base_link:
+                  extractor_carriage_link:
+                    extractor_hook_link:
+                      {}
       Update Interval: 0
       Value: true
     - Class: rviz/Marker
@@ -497,7 +635,7 @@ Visualization Manager:
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: front_laser
+    Fixed Frame: odom
     Frame Rate: 30
   Name: root
   Tools:
@@ -530,19 +668,19 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 34.603519439697266
+      Scale: 466.88739013671875
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 2.216071605682373
-      Y: -3.9425787925720215
+      X: 2.9649622440338135
+      Y: 0.07161886990070343
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 1023
+  Height: 1025
   Hide Left Dock: false
   Hide Right Dock: true
-  QMainWindow State: 000000ff00000000fd0000000400000000000001a000000361fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d00000361000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f0000037efc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d0000037e000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000074d0000003efc0100000002fb0000000800540069006d006501000000000000074d000002eb00fffffffb0000000800540069006d00650100000000000004500000000000000000000005a70000036100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000001a000000363fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d00000363000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f0000037efc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d0000037e000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000075b0000003efc0100000002fb0000000800540069006d006501000000000000075b000002eb00fffffffb0000000800540069006d00650100000000000004500000000000000000000005b50000036300000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -551,6 +689,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: true
-  Width: 1869
-  X: 51
+  Width: 1883
+  X: 37
   Y: 27
