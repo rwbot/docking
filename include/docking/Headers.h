@@ -38,6 +38,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
 #include <nav_msgs/Path.h>
+#include <nav_msgs/Odometry.h>
 
 #include <ros/master.h>
 #include <ros/ros.h>

@@ -124,6 +124,7 @@ add_action_files(
  generate_dynamic_reconfigure_options(
     cfg/DetectionNode.cfg
     cfg/PoseController.cfg
+    cfg/HolonomicPlannerNode.cfg
     cfg/PlannerNode.cfg
     cfg/ControllerNode.cfg
 #   cfg/DynReconf2.cfg
@@ -182,6 +183,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(detection_node src/detection_node.cpp)
 add_executable(planner_node src/planner_node.cpp)
+add_executable(holonomic_planner_node src/holonomic_planner_node.cpp)
 add_executable(controller_node src/controller_node.cpp)
 # add_executable(${PROJECT_NAME} src/line_detection.cpp)
 
@@ -196,19 +198,21 @@ add_executable(controller_node src/controller_node.cpp)
 add_dependencies(
 	detection_node
   planner_node
+  holonomic_planner_node
   controller_node
 	${detection_node_EXPORTED_TARGETS}
 	${catkin_EXPORTED_TARGETS}
 )
 
 
-
 add_dependencies(detection_node ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
+add_dependencies(holonomic_planner_node ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(planner_node ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(controller_node ${PROJECT_NAME}_gencfg ${PROJECT_NAME}_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(detection_node  ${catkin_LIBRARIES})
+target_link_libraries(holonomic_planner_node  ${catkin_LIBRARIES})
 target_link_libraries(planner_node  ${catkin_LIBRARIES})
 target_link_libraries(controller_node  ${catkin_LIBRARIES})
 #############
