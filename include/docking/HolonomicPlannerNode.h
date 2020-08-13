@@ -211,71 +211,15 @@ public:
     ROS_INFO_STREAM("PlannerNode: Initialized Globals");
   }
 
-  void printGains(){
+  void printTranslationGains(){
     ROS_INFO("KP: %f, KI: %f, KD: %f ", kp_translate_, ki_translate_ , kd_translate_);
   }
 
-
-
-  ///////////////// BEGIN CALCULATE PLAN /////////////////
-  /// \brief calculateCurrentApproach
-  /// \param targetPose
-  /// \return
-  ///
-
-  bool calculatePlan(geometry_msgs::PoseStamped &targetPose) {
-    // std::cout << std::endl;
-    // ROS_INFO_STREAM("BEGIN calculatePlan");
-
-    // ROS_INFO_STREAM("**************** BEGINNING CALCULATING PLAN ****************");
-    // tf2::Transform odom2BaseTF, odom2EntranceTF, deltaTF;
-    // geometry_msgs::TransformStamped odom2BaseTFMsg, odom2EntranceTFMsg, deltaTFMsg, tempTFMsg;
-    // geometry_msgs::PoseStamped odom2BasePose, odom2EntrancePose, deltaTFPose, entrancePose;
-    // std::string projectionFrameID="projection", robotFrameID=robot_frame_, entranceFrameID="entrance";
-
-//    Init Odom to Base
-    // odom2BaseTFMsg.header.frame_id = "odom";
-    // odom2BaseTFMsg.child_frame_id = robotFrameID;
-    // odom2BaseTFMsg.header.stamp = ros::Time::now();
-    // odom2BaseTFMsg.transform.translation.x = odom2BaseTFMsg.transform.translation.y = odom2BaseTFMsg.transform.translation.z = 0.0;
-    // tf2::Quaternion qProjection;
-    // qProjection.setRPY(0, 0, 0);
-    // tf2::convert(qProjection,odom2BaseTFMsg.transform.rotation);
-    // syncTFData(odom2BaseTFMsg,odom2BaseTF,odom2BasePose);
-    // ROS_INFO_STREAM("ODOM->BASE TF MSG" << transformString(odom2BaseTFMsg));
-    // ROS_INFO_STREAM("ODOM->BASE TRANSFORM" << transformString(odom2BaseTF));
-    // ROS_INFO_STREAM("ODOM->BASE POSE MSG" << poseString(odom2BasePose.pose));
-
-    
-
-    // Transform targetPose into odom frame
-    // try {
-    //   odom2BaseTFMsg = tfBuffer_.lookupTransform("odom", "base_link", ros::Time(0));
-    //   syncTFData(odom2BaseTFMsg,odom2BaseTF,odom2BasePose);
-    //   ROS_INFO_STREAM("ODOM->TARGET TRANSFORM " << transformString(odom2TargetTFMsg));
-
-    //   odom2TargetTFMsg = tfBuffer_.lookupTransform("odom", "dock", ros::Time(0));
-    //   syncTFData(odom2TargetTFMsg, odom2TargetTF, odom2TargetPose);
-    //   ROS_INFO_STREAM("ODOM->BASE TF MSG " << transformString(odom2BaseTFMsg));
-    // }
-    // catch (tf::TransformException const &ex)  {
-    //   ROS_ERROR("%s",ex.what());
-    //   return false;
-    // }
-    // std::cout << std::endl;
-
-//    double targetYaw = tf2::getYaw(odom2TargetTFMsg.transform.rotation);
-
-    // // Incorporate entrance distance offset from dock (base_link is middle of robot)
-    // ROS_INFO_STREAM("ORIGINAL TARGET POSE MSG" << poseString(targetPose));
-    // double targetYaw = tf2::getYaw(targetPose.pose.orientation);
-    // entrancePose.pose.position.x -= entrance_dist_ * cos(targetYaw);
-    // entrancePose.pose.position.y -= entrance_dist_ * sin(targetYaw);
-    // ROS_INFO_STREAM("TARGET POSE MSG + ENTRANCE DISTANCE" << poseString(targetPose));
-
-    return true;
-
+  void printRotationGains(){
+    ROS_INFO("KP: %f, KI: %f, KD: %f ", kp_rotate_, ki_rotate_ , kd_rotate_);
   }
+
+
 
   bool execute(){
     // Only perform planning if activated
@@ -301,6 +245,16 @@ public:
 
     ros::Duration(1.0).sleep();
 
+    ROS_WARN_STREAM("EXECUTING YAW ROTATION");
+      if(rotate( goal_orientation_tolerance_))
+        ROS_DEBUG_STREAM("YAW ROTATION SUCCESSFUL");
+      else{
+        ROS_ERROR_STREAM("YAW ROTATION FAILED");
+        return false;
+      }
+
+
+
     ROS_WARN_STREAM("EXECUTING X TRANSLATION");
 //    if(!successX_){
       if(translate("x", goal_dist_tolerance_))
@@ -311,12 +265,12 @@ public:
       }
 //    }
 
-    
-
-
-
   }
 
+  /// Check if entrance frame exists in TF tree
+  /// \brief dockExists
+  /// \return bool
+  ///
   bool dockExists(){
     try {
       tfBuffer_.lookupTransform("odom", "entrance", ros::Time(0));
@@ -328,10 +282,15 @@ public:
     return true;
   }
 
-
+  /// Translate in X or Y Axes
+  /// \brief translate
+  /// \param axis
+  /// \param tolerance
+  /// \return bool
+  ///
   bool translate(std::string axis, double tolerance)
   {
-    ros::Rate control_rate(control_frequency_); //we want to controll the position at
+    ros::Rate control_rate(control_frequency_); // freq we want to control the position at
     double drive_effort = 0.0;
     double initial_error = 0.0;
     double position_error = 0.0;
@@ -347,7 +306,7 @@ public:
     if(!axis.compare("y"))
       initial_error = position_error = odom2BaseTF_.inverseTimes(odom2EntranceTF_).getOrigin().getY();
     ROS_INFO_STREAM("Initial Error of " << initial_error);
-    ROS_INFO_STREAM("Goal Dist Tolerance " << goal_dist_tolerance_);
+    ROS_INFO_STREAM("Goal Dist Tolerance " << tolerance);
     bool stop = false;
 
     while(!stop && ros::ok()){
@@ -361,7 +320,7 @@ public:
           return false;
         }
       }
-      printGains();
+      printTranslationGains();
 
       if(fabs(position_error) < tolerance)
         stop = true;
@@ -417,130 +376,85 @@ public:
 
   }
 
+  /// Rotate about Z Axis (Yaw)
+  /// \brief rotate
+  /// \param tolerance
+  /// \return
+  ///
+  bool rotate(double tolerance)
+  {
+    ros::Rate control_rate(control_frequency_); // freq we want to control the position at
+    double rotation_effort = 0.0;
+    double initial_error = 0.0;
+    double rotation_error = 0.0;
+    double rotation_error_diff = 0.0;
+    double last_rotation_error = 0.0;
+    double rotation_error_sum = 0.0;
+    geometry_msgs::Twist twist = zeroTwist_;
+    ros::Time start_time = ros::Time::now();
+    ros::Time last_update_time = ros::Time::now();
+    double dT = 0.0;
+    initial_error = rotation_error = tf2::getYaw(odom2BaseTF_.inverseTimes(odom2EntranceTF_).getRotation());
+    ROS_INFO_STREAM("Initial Error of " << initial_error);
+    ROS_INFO_STREAM("Goal Rotation Tolerance " << tolerance);
+    bool stop = false;
+
+    while(!stop && ros::ok()){
+      if(!dockExists()){
+        cmd_vel_pub_.publish(zeroTwist_);
+        ROS_WARN_STREAM("DOCK NOT FOUND");
+        ROS_INFO_STREAM("Waiting 0.1 seconds for dock frame to exist");
+        ros::Duration(0.1).sleep();
+        if(!dockExists()){
+          ROS_WARN_STREAM("DOCK STILL NOT FOUND. ROTATION FAILED");
+          return false;
+        }
+      }
+      printRotationGains();
+
+      if(fabs(rotation_error) < tolerance)
+        stop = true;
+
+      dT = (ros::Time::now()-last_update_time).toSec();
+      last_update_time =  ros::Time::now();
+      rotation_error = tf2::getYaw(odom2BaseTF_.inverseTimes(odom2EntranceTF_).getRotation());
+      ROS_INFO_STREAM("Current ROTATION Error of " << rotation_error);
+      rotation_error_diff = rotation_error - last_rotation_error;
+      rotation_error_sum += rotation_error * dT;
+      //store our last rotation error
+      last_rotation_error = rotation_error;
+      //Limit the integrator
+      if (fabs(rotation_error_sum) > 1.0)
+        rotation_error_sum = copysign(1.0, rotation_error_sum);
+
+      //PID control law...
+      rotation_effort = rotation_error*kp_translate_ + rotation_error_diff*kd_translate_ + rotation_error_sum*ki_translate_;
+      ROS_INFO("PP: %f, PI: %f, PD: %f ", rotation_error, rotation_error_sum, rotation_error_diff);
+      ROS_INFO("PP: %f, PI: %f, PD: %f ", rotation_error*kp_translate_, rotation_error_sum*ki_translate_, rotation_error_diff*kd_translate_);
 
 
+      if(rotation_effort < 0.6 && rotation_effort < 0)
+        rotation_effort = -0.6;
+      if(rotation_effort < 0.6 && rotation_effort > 0)
+        rotation_effort = 0.6;
+
+      ROS_INFO_STREAM("Rotation Effort " << rotation_effort);
+
+      twist.angular.z = rotation_effort;
 
 
+      cmd_vel_pub_.publish(twist);
 
+      ros::spinOnce();
+      control_rate.sleep();
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    void addtoPlan(geometry_msgs::PoseStamped & ps,
-                   geometry_msgs::Twist & twist) {
-      plan_.path.poses.push_back(ps);
-      plan_.poseArray.poses.push_back(ps.pose);
-      plan_.twists.push_back(twist);
     }
 
-    void stepPose(geometry_msgs::PoseStamped & poseOld,
-                  geometry_msgs::Twist & t) {
-      ROS_INFO_STREAM("Started Stepping Pose with Twist " << twistString(t));
-      geometry_msgs::PoseStamped poseDelta, poseNew;
-      poseOld.header.stamp = poseOld.header.stamp + time_step_duration_;
+    cmd_vel_pub_.publish(zeroTwist_);
 
-      double yawOld = getYaw(poseOld.pose.orientation), yawNew = 0;
-      tf2::Quaternion qOld, qDelta, qNew;
-      tf2::convert(poseOld.pose.orientation, qOld);
+    return true;
 
-      poseDelta.pose.position.x =
-          (t.linear.x * cos(yawOld) - t.linear.y * sin(yawOld)) * time_step_;
-      poseDelta.pose.position.y =
-          (t.linear.x * sin(yawOld) + t.linear.y * cos(yawOld)) * time_step_;
-      double yawDelta = t.angular.z * time_step_;
-      poseDelta.pose.orientation = getQuaternion(yawDelta);
-
-      poseNew.pose.position.x =
-          poseOld.pose.position.x + poseDelta.pose.position.x;
-      poseNew.pose.position.y =
-          poseOld.pose.position.y + poseDelta.pose.position.y;
-      yawNew = yawOld + yawDelta;
-      poseNew.pose.orientation = getQuaternion(yawNew);
-      qDelta.setRPY(0, 0, yawDelta);
-      qNew = qDelta * qOld;
-      qNew.normalize();
-
-      ROS_INFO_STREAM("ORIG  Pose           " << poseString(poseOld.pose)
-                                              << " YAW: " << yawOld);
-
-      ROS_INFO_STREAM("DELTA Pose (YAW calc)" << poseString(poseDelta.pose)
-                                              << " YAW: " << yawDelta);
-      tf2::convert(qDelta, poseDelta.pose.orientation);
-      ROS_INFO_STREAM("DELTA Pose (Qua calc)" << poseString(poseDelta.pose)
-                                              << " YAW: " << yawDelta);
-
-      ROS_INFO_STREAM("STEPD Pose (YAW calc)" << poseString(poseNew.pose)
-                                              << " YAW: " << yawNew);
-      tf2::convert(qNew, poseNew.pose.orientation);
-      ROS_INFO_STREAM("STEPD Pose (Qua calc)" << poseString(poseNew.pose)
-                                              << " YAW: " << yawNew);
-
-      poseOld.pose = poseNew.pose;
-      ROS_INFO_STREAM("Finished Stepping Pose");
-    }
-
-    tf2::Transform getDeltaTFFromTwist(tf2::Transform curTF,
-                                       geometry_msgs::Twist & t) {
-      tf2::Transform deltaTF;
-      ROS_INFO_STREAM("Started Stepping Pose with Twist " << twistString(t));
-
-      tf2::Quaternion qOld, qDelta, qNew;
-      tf2::convert(curTF.getRotation(), qOld);
-      double yawOld = tf2::getYaw(qOld);
-      double deltaX, deltaY, deltaYaw, rho;
-      rho = t.linear.x * time_step_;
-      deltaYaw = t.angular.z * time_step_;
-
-      //    deltaX = (t.linear.x * cos(deltaYaw)  -  t.linear.y * sin(deltaYaw))
-      //    * time_step_; deltaY = (t.linear.x * sin(deltaYaw)  +  t.linear.y *
-      //    cos(deltaYaw)) * time_step_;
-      deltaX = rho * cos(deltaYaw);
-      deltaY = rho * sin(deltaYaw);
-
-      tf2::Vector3 deltaOrigin(deltaX, deltaY, curTF.getOrigin().getZ());
-      deltaTF.setOrigin(deltaOrigin);
-      qDelta.setRPY(0, 0, deltaYaw);
-      deltaTF.setRotation(qDelta);
-
-      std::ostringstream positionSS;
-      positionSS << std::fixed << std::setprecision(2) << "DELTA X POSITION "
-                 << deltaX << " DELTA Y POSITION " << deltaY << " ";
-
-      ROS_INFO_STREAM(positionSS.str());
-
-      ROS_INFO_STREAM("ORIG  TF " << transformString(curTF)
-                                  << yawString(yawOld));
-      ROS_INFO_STREAM("DELTA TF " << transformString(deltaTF)
-                                  << yawString(deltaYaw));
-
-      return deltaTF;
-      //    tf2::convert(qDelta, poseDelta.pose.orientation);
-      //    ROS_INFO_STREAM("DELTA TF (Qua calc)" << poseString(poseDelta.pose)
-      //    << " YAW: " << yawDelta);
-    }
-
-    tf2::Transform getProjectionToTargetTF(tf2::Transform & base2Proj,
-                                           tf2::Transform & base2Target) {
-      // AtoC = AtoB * BtoC;
-      tf2::Transform proj2Base, proj2Target;
-      proj2Base = base2Proj.inverse();
-      proj2Target = proj2Base * base2Target;
-      ROS_INFO_STREAM("GETTING TF FROM PROJECTION TO TARGET "
-                      << transformString(proj2Target));
-      return proj2Target;
-    }
-
+  }
 };
 
-#endif // PLANNERNODE_H
+#endif // HOLONOMICPLANNERNODE_H

@@ -77,8 +77,6 @@ public:
     cmd_vel_topic_ = config.cmd_vel_topic;
     publish_twist_ = config.publish_twist;
     time_step_ = config.time_step;
-    goal_orientation_tolerance_ = config.goal_orientation_tolerance;
-    goal_dist_tolerance_ = config.goal_dist_tolerance;
     dock_pose_topic_ = config.dock_pose_topic;
     plan_topic_ = config.plan_topic;
 //    frequency_ = config.frequency;
